@@ -1,0 +1,358 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity", "interactiveTransactions", "fullTextSearch"]
+  binaryTargets   = ["debian-openssl-3.0.x", "native"]
+}
+
+datasource db {
+  provider             = "postgresql"
+  url                  = env("DATABASE_URL")
+  referentialIntegrity = "foreignKeys"
+}
+
+generator jsonSchema {
+  provider = "prisma-json-schema-generator"
+}
+
+model Account {
+  id              String   @id @default(uuid())
+  created         DateTime @default(now())
+  email           String   @unique
+  passwordHash    String
+  isEmailVerified Boolean  @default(false)
+  role            Role     @default(USER)
+
+  autoCreatedMealTemplates MealTemplate[] @relation("AutoCreatedMealTemplates")
+
+  // @TODO Add calorie+macro goals as settings
+  // lb or kg
+  // starting date
+  // current weight
+  // gender
+  // estimated body fat %
+    // OR:
+    // calculate body fat
+    // measurements in cm/in
+    // Enter your height
+    // Enter your waist measurement
+    // Enter your neck measurement
+  // Enter goal weight manually
+    // OR:
+    // what is your current training experience?
+    // what is your main goal? (Build Muscle, Lose Fat, Maintain)
+
+  // ## Calculated ##
+  // Suggested goal weight change per week
+  // TDEE
+  // Target surplus
+
+  DecimaedailyTargetProtein Int?
+  dailyTargetFat Int?
+  dailyTargetCarbohydrates Int?
+  dailyTargetCalories Int?
+
+
+  foods   Food[]
+  recipes Recipe[]
+  meals   Meal[]
+  days    Day[]
+  plans   Plan[]
+  batchRecipes BatchRecipe[]
+  mealTemplates MealTemplate[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model MealTemplate {
+  id String @id @default(uuid())
+  name String
+  order Int
+
+  protein Int
+  carbohydrates Int
+  fat Int
+
+  meals Meal[]
+
+  inAutoCreatedTemplatesOf Account @relation("AutoCreatedMealTemplates", fields: [inAutoCreatedTemplatesOfAccountId], references: [id])
+  inAutoCreatedTemplatesOfAccountId String
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model BatchRecipe {
+  id String @id @default(uuid())
+  gramWeight Decimal
+  isCooked Boolean @default(false)
+
+  recipes Recipe[]
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model Plan {
+  id String   @id @default(uuid())
+  created DateTime @default(now())
+
+  name String
+  days String[] @default([])
+  scale Decimal  @default(1)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model Day {
+  id  String    @id @default(uuid())
+  day DateTime?
+
+  foodsOnDays FoodsOnDays[]
+  recipesOnDays RecipesOnDays[]
+  mealsOnDays MealsOnDays[]
+
+  weight Int?
+  waist Decimal?
+  neck Decimal?
+  calories Int @default(0) // re-calculate this every time something is modified in the day??
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model FoodsOnDays {
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+  day    Day    @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId  String
+
+  scale Decimal @default(1)
+
+  // if foodUnitId is null, assume we're using grams
+  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: SetNull)
+  foodUnitId String?
+
+  @@id([foodId, dayId])
+}
+
+model RecipesOnDays {
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+  day      Day    @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId    String
+
+  scale Decimal @default(1)
+
+  @@id([recipeId, dayId])
+}
+
+model MealsOnDays {
+  meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  mealId String
+  day    Day    @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId  String
+
+  scale Decimal @default(1)
+
+  @@id([mealId, dayId])
+}
+
+model Meal {
+  id      String   @id @default(uuid())
+  created DateTime @default(now())
+  name    String
+  saved   Boolean  @default(false)
+
+  foodsOnMeals   FoodsOnMeals[]
+  recipesOnMeals RecipesOnMeals[]
+  mealsOnDays    MealsOnDays[]
+
+  // duplicatedFrom String?
+  // meal Meal? @relation("MealDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
+  // duplications Meal[] @relation("MealDuplications")
+
+  mealTemplate MealTemplate? @relation(fields: [mealTemplateId], references: [id], onDelete: SetNull)
+  mealTemplateId String?
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model RecipesOnMeals {
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+  meal     Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  mealId   String
+
+  scale Decimal @default(1)
+
+  @@id([recipeId, mealId])
+}
+
+model FoodsOnMeals {
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+  meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  mealId String
+
+  scale Decimal @default(1)
+
+  // if foodUnitId is null, assume we're using grams
+  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: Cascade)
+  foodUnitId String?
+
+  @@id([foodId, mealId])
+}
+
+model Recipe {
+  id      String   @id @default(uuid())
+  created DateTime @default(now())
+  name    String
+  saved   Boolean  @default(false)
+
+  foodsOnRecipes FoodsOnRecipes[]
+  recipesOnMeals RecipesOnMeals[]
+  recipesOnDays  RecipesOnDays[]
+
+  // duplicatedFrom String?
+  // recipe Recipe? @relation("RecipeDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
+  // duplications Recipe[] @relation("RecipeDuplications")
+
+  directions String[]
+
+  batchRecipe BatchRecipe? @relation(fields: [batchRecipeId], references: [id], onDelete: SetNull)
+  batchRecipeId String?
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model FoodsOnRecipes {
+  food     Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId   String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+
+  scale Decimal @default(1)
+  note String
+
+  // if foodUnitId is null, assume we're using grams
+  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: SetNull)
+  foodUnitId String?
+
+  @@id([foodId, recipeId])
+}
+
+model Food {
+  id         String   @id @default(uuid())
+  created    DateTime @default(now())
+  name       String
+  gramWeight Decimal? // what nutrients of the food will be based on
+
+  // might not be necessary anymore
+  // saved      Boolean  @default(false)
+
+  // duplicatedFrom String?
+  // food Food? @relation("FoodDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
+  // duplications Food[] @relation("FoodDuplications")
+
+  source       String?
+  usdaDataType String?
+  fdcId        Int?    @unique // Food Data Central ID
+
+  foodCategory   FoodCategory? @relation(fields: [foodCategoryId], references: [id], onDelete: Restrict)
+  foodCategoryId String?
+
+  foodUnits        FoodUnit[]
+  nutrientsOnFoods NutrientsOnFoods[]
+
+  recipes FoodsOnRecipes[]
+  meals   FoodsOnMeals[]
+  days    FoodsOnDays[]
+
+  // If null, assume this is a "global" food
+    // can only be modified by someone with Admin role
+    // users can create a copy of the food if they want to customize it
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String?
+}
+
+// could be created from a `Unit`. Not every `FoodUnit` needs to have a `Unit`
+// associated with it; allow users to set step on the fly.
+model FoodUnit {
+  id      String   @id @default(uuid())
+  created DateTime @default(now())
+
+  name         String
+  abbreviation String?
+  servingSizeAmount Decimal @default(1)
+
+  halves     Boolean @default(false)
+  thirds     Boolean @default(false)
+  fourths    Boolean @default(false)
+  sixths     Boolean @default(false)
+  eighths    Boolean @default(false)
+  sixteenths Boolean @default(false)
+
+  unitToGramRatio Decimal // = X / Food.gramWeight
+  // gramWeight Decimal
+
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+
+  foodsOnRecipes FoodsOnRecipes[]
+  foodsOnMeals   FoodsOnMeals[]
+  foodsOnDays    FoodsOnDays[]
+  Unit           Unit?            @relation(fields: [unitId], references: [id])
+  unitId         String?
+}
+
+model Unit {
+  id           String  @id @default(uuid())
+  name         String  @unique
+  abbreviation String? @unique
+
+  halves     Boolean @default(false)
+  thirds     Boolean @default(false)
+  fourths    Boolean @default(false)
+  sixths     Boolean @default(false)
+  eighths    Boolean @default(false)
+  sixteenths Boolean @default(false)
+
+  foodUnits        FoodUnit[]
+  nutrientsOnFoods NutrientsOnFoods[]
+}
+
+model FoodCategory {
+  id   String @id @default(uuid())
+  name String @unique
+
+  food Food[]
+}
+
+model NutrientsOnFoods {
+  nutrient   Nutrient @relation(fields: [nutrientId], references: [id], onDelete: Restrict)
+  nutrientId String
+  food       Food     @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId     String
+
+  amount Decimal
+
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  unitId String
+
+  @@id([foodId, nutrientId])
+}
+
+model Nutrient {
+  id   String @id @default(uuid())
+  name String @unique
+
+  fdcNutrientId Int
+
+  nutrientsOnFoods NutrientsOnFoods[]
+}

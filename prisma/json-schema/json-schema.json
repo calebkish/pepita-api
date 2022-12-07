@@ -1,0 +1,820 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "email": {
+          "type": "string"
+        },
+        "passwordHash": {
+          "type": "string"
+        },
+        "isEmailVerified": {
+          "type": "boolean",
+          "default": false
+        },
+        "role": {
+          "type": "string",
+          "default": "USER",
+          "enum": [
+            "USER",
+            "ADMIN"
+          ]
+        },
+        "autoCreatedMealTemplates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MealTemplate"
+          }
+        },
+        "DecimaedailyTargetProtein": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dailyTargetFat": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dailyTargetCarbohydrates": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dailyTargetCalories": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "foods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Food"
+          }
+        },
+        "recipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recipe"
+          }
+        },
+        "meals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Meal"
+          }
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Day"
+          }
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Plan"
+          }
+        },
+        "batchRecipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BatchRecipe"
+          }
+        },
+        "mealTemplates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MealTemplate"
+          }
+        }
+      }
+    },
+    "MealTemplate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "order": {
+          "type": "integer"
+        },
+        "protein": {
+          "type": "integer"
+        },
+        "carbohydrates": {
+          "type": "integer"
+        },
+        "fat": {
+          "type": "integer"
+        },
+        "meals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Meal"
+          }
+        },
+        "inAutoCreatedTemplatesOf": {
+          "$ref": "#/definitions/Account"
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "BatchRecipe": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "gramWeight": {
+          "type": "number"
+        },
+        "isCooked": {
+          "type": "boolean",
+          "default": false
+        },
+        "recipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recipe"
+          }
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "Plan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "Day": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "day": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "foodsOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnDays"
+          }
+        },
+        "recipesOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RecipesOnDays"
+          }
+        },
+        "mealsOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MealsOnDays"
+          }
+        },
+        "weight": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "waist": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "neck": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "calories": {
+          "type": "integer",
+          "default": 0
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "FoodsOnDays": {
+      "type": "object",
+      "properties": {
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "day": {
+          "$ref": "#/definitions/Day"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        },
+        "foodUnit": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FoodUnit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "RecipesOnDays": {
+      "type": "object",
+      "properties": {
+        "recipe": {
+          "$ref": "#/definitions/Recipe"
+        },
+        "day": {
+          "$ref": "#/definitions/Day"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        }
+      }
+    },
+    "MealsOnDays": {
+      "type": "object",
+      "properties": {
+        "meal": {
+          "$ref": "#/definitions/Meal"
+        },
+        "day": {
+          "$ref": "#/definitions/Day"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        }
+      }
+    },
+    "Meal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "saved": {
+          "type": "boolean",
+          "default": false
+        },
+        "foodsOnMeals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnMeals"
+          }
+        },
+        "recipesOnMeals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RecipesOnMeals"
+          }
+        },
+        "mealsOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MealsOnDays"
+          }
+        },
+        "mealTemplate": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MealTemplate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "RecipesOnMeals": {
+      "type": "object",
+      "properties": {
+        "recipe": {
+          "$ref": "#/definitions/Recipe"
+        },
+        "meal": {
+          "$ref": "#/definitions/Meal"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        }
+      }
+    },
+    "FoodsOnMeals": {
+      "type": "object",
+      "properties": {
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "meal": {
+          "$ref": "#/definitions/Meal"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        },
+        "foodUnit": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FoodUnit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Recipe": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "saved": {
+          "type": "boolean",
+          "default": false
+        },
+        "foodsOnRecipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnRecipes"
+          }
+        },
+        "recipesOnMeals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RecipesOnMeals"
+          }
+        },
+        "recipesOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RecipesOnDays"
+          }
+        },
+        "directions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "batchRecipe": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BatchRecipe"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "FoodsOnRecipes": {
+      "type": "object",
+      "properties": {
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe"
+        },
+        "scale": {
+          "type": "number",
+          "default": 1
+        },
+        "note": {
+          "type": "string"
+        },
+        "foodUnit": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FoodUnit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Food": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "gramWeight": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "usdaDataType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fdcId": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "foodCategory": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FoodCategory"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "foodUnits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodUnit"
+          }
+        },
+        "nutrientsOnFoods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NutrientsOnFoods"
+          }
+        },
+        "recipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnRecipes"
+          }
+        },
+        "meals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnMeals"
+          }
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnDays"
+          }
+        },
+        "account": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Account"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "FoodUnit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "abbreviation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "servingSizeAmount": {
+          "type": "number",
+          "default": 1
+        },
+        "halves": {
+          "type": "boolean",
+          "default": false
+        },
+        "thirds": {
+          "type": "boolean",
+          "default": false
+        },
+        "fourths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixths": {
+          "type": "boolean",
+          "default": false
+        },
+        "eighths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixteenths": {
+          "type": "boolean",
+          "default": false
+        },
+        "unitToGramRatio": {
+          "type": "number"
+        },
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "foodsOnRecipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnRecipes"
+          }
+        },
+        "foodsOnMeals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnMeals"
+          }
+        },
+        "foodsOnDays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnDays"
+          }
+        },
+        "Unit": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Unit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Unit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "abbreviation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "halves": {
+          "type": "boolean",
+          "default": false
+        },
+        "thirds": {
+          "type": "boolean",
+          "default": false
+        },
+        "fourths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixths": {
+          "type": "boolean",
+          "default": false
+        },
+        "eighths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixteenths": {
+          "type": "boolean",
+          "default": false
+        },
+        "foodUnits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodUnit"
+          }
+        },
+        "nutrientsOnFoods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NutrientsOnFoods"
+          }
+        }
+      }
+    },
+    "FoodCategory": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "food": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Food"
+          }
+        }
+      }
+    },
+    "NutrientsOnFoods": {
+      "type": "object",
+      "properties": {
+        "nutrient": {
+          "$ref": "#/definitions/Nutrient"
+        },
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "unit": {
+          "$ref": "#/definitions/Unit"
+        }
+      }
+    },
+    "Nutrient": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "fdcNutrientId": {
+          "type": "integer"
+        },
+        "nutrientsOnFoods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NutrientsOnFoods"
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "account": {
+      "$ref": "#/definitions/Account"
+    },
+    "mealTemplate": {
+      "$ref": "#/definitions/MealTemplate"
+    },
+    "batchRecipe": {
+      "$ref": "#/definitions/BatchRecipe"
+    },
+    "plan": {
+      "$ref": "#/definitions/Plan"
+    },
+    "day": {
+      "$ref": "#/definitions/Day"
+    },
+    "foodsOnDays": {
+      "$ref": "#/definitions/FoodsOnDays"
+    },
+    "recipesOnDays": {
+      "$ref": "#/definitions/RecipesOnDays"
+    },
+    "mealsOnDays": {
+      "$ref": "#/definitions/MealsOnDays"
+    },
+    "meal": {
+      "$ref": "#/definitions/Meal"
+    },
+    "recipesOnMeals": {
+      "$ref": "#/definitions/RecipesOnMeals"
+    },
+    "foodsOnMeals": {
+      "$ref": "#/definitions/FoodsOnMeals"
+    },
+    "recipe": {
+      "$ref": "#/definitions/Recipe"
+    },
+    "foodsOnRecipes": {
+      "$ref": "#/definitions/FoodsOnRecipes"
+    },
+    "food": {
+      "$ref": "#/definitions/Food"
+    },
+    "foodUnit": {
+      "$ref": "#/definitions/FoodUnit"
+    },
+    "unit": {
+      "$ref": "#/definitions/Unit"
+    },
+    "foodCategory": {
+      "$ref": "#/definitions/FoodCategory"
+    },
+    "nutrientsOnFoods": {
+      "$ref": "#/definitions/NutrientsOnFoods"
+    },
+    "nutrient": {
+      "$ref": "#/definitions/Nutrient"
+    }
+  }
+}

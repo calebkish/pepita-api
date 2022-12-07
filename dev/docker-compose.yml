@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  postgres:
+    build: ./postgres/
+    ports:
+      - "5432:5432"
+    networks:
+      cool-network:
+    environment:
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      PG_DB_NAME: ${PG_DB_NAME}
+    volumes:
+      - type: volume
+        source: pg_data
+        target: /var/lib/postgresql/data/
+
+  adminer:
+    image: adminer
+    restart: always
+    networks:
+      cool-network:
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg_data: {}
+
+networks:
+  cool-network:

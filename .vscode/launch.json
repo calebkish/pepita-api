@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Program",
+      "type": "pwa-node",
+      "request": "launch",
+      "protocol": "inspector",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "node",
+      "console": "integratedTerminal",
+      "program": "${workspaceFolder}/dist/app.js",
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/dist/**/*.js",
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "preLaunchTask": "npm: build"
+    }
+  ]
+}

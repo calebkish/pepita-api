@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Unit" ALTER COLUMN "fdcId" DROP NOT NULL;

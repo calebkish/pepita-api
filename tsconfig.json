@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "module": "node16",
+    "target": "es2021",
+    "moduleResolution": "node16",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+
+    "sourceMap": true,
+    "skipLibCheck": true,
+
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

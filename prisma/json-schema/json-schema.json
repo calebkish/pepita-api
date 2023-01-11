@@ -35,7 +35,7 @@
             "$ref": "#/definitions/MealTemplate"
           }
         },
-        "DecimaedailyTargetProtein": {
+        "dailyTargetProtein": {
           "type": [
             "integer",
             "null"
@@ -89,12 +89,6 @@
             "$ref": "#/definitions/Plan"
           }
         },
-        "batchRecipes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/BatchRecipe"
-          }
-        },
         "mealTemplates": {
           "type": "array",
           "items": {
@@ -115,6 +109,9 @@
         "order": {
           "type": "integer"
         },
+        "calories": {
+          "type": "integer"
+        },
         "protein": {
           "type": "integer"
         },
@@ -132,30 +129,6 @@
         },
         "inAutoCreatedTemplatesOf": {
           "$ref": "#/definitions/Account"
-        },
-        "account": {
-          "$ref": "#/definitions/Account"
-        }
-      }
-    },
-    "BatchRecipe": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "gramWeight": {
-          "type": "number"
-        },
-        "isCooked": {
-          "type": "boolean",
-          "default": false
-        },
-        "recipes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Recipe"
-          }
         },
         "account": {
           "$ref": "#/definitions/Account"
@@ -200,8 +173,7 @@
           "type": [
             "string",
             "null"
-          ],
-          "format": "date-time"
+          ]
         },
         "foodsOnDays": {
           "type": "array",
@@ -239,10 +211,6 @@
             "null"
           ]
         },
-        "calories": {
-          "type": "integer",
-          "default": 0
-        },
         "account": {
           "$ref": "#/definitions/Account"
         }
@@ -262,14 +230,7 @@
           "default": 1
         },
         "foodUnit": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/FoodUnit"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/FoodUnit"
         }
       }
     },
@@ -410,6 +371,10 @@
           "type": "boolean",
           "default": false
         },
+        "scale": {
+          "type": "number",
+          "default": 1
+        },
         "foodsOnRecipes": {
           "type": "array",
           "items": {
@@ -428,21 +393,49 @@
             "$ref": "#/definitions/RecipesOnDays"
           }
         },
-        "directions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "batchRecipe": {
           "anyOf": [
             {
-              "$ref": "#/definitions/BatchRecipe"
+              "$ref": "#/definitions/Recipe"
             },
             {
               "type": "null"
             }
           ]
+        },
+        "batchRecipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Recipe"
+          }
+        },
+        "gramWeight": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "isBatchRecipe": {
+          "type": "boolean",
+          "default": false
+        },
+        "isBatchRecipeCooked": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "isBatchRecipeEaten": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "directions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "account": {
           "$ref": "#/definitions/Account"
@@ -452,6 +445,9 @@
     "FoodsOnRecipes": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "food": {
           "$ref": "#/definitions/Food"
         },
@@ -463,17 +459,13 @@
           "default": 1
         },
         "note": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "foodUnit": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/FoodUnit"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/FoodUnit"
         }
       }
     },
@@ -614,6 +606,9 @@
           "default": false
         },
         "unitToGramRatio": {
+          "type": "number"
+        },
+        "gramWeight": {
           "type": "number"
         },
         "food": {
@@ -764,9 +759,6 @@
     },
     "mealTemplate": {
       "$ref": "#/definitions/MealTemplate"
-    },
-    "batchRecipe": {
-      "$ref": "#/definitions/BatchRecipe"
     },
     "plan": {
       "$ref": "#/definitions/Plan"

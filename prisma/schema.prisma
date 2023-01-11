@@ -46,18 +46,16 @@ model Account {
   // TDEE
   // Target surplus
 
-  DecimaedailyTargetProtein Int?
+  dailyTargetProtein Int?
   dailyTargetFat Int?
   dailyTargetCarbohydrates Int?
   dailyTargetCalories Int?
-
 
   foods   Food[]
   recipes Recipe[]
   meals   Meal[]
   days    Day[]
   plans   Plan[]
-  batchRecipes BatchRecipe[]
   mealTemplates MealTemplate[]
 }
 
@@ -71,6 +69,7 @@ model MealTemplate {
   name String
   order Int
 
+  calories Int
   protein Int
   carbohydrates Int
   fat Int
@@ -79,17 +78,6 @@ model MealTemplate {
 
   inAutoCreatedTemplatesOf Account @relation("AutoCreatedMealTemplates", fields: [inAutoCreatedTemplatesOfAccountId], references: [id])
   inAutoCreatedTemplatesOfAccountId String
-
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  accountId String
-}
-
-model BatchRecipe {
-  id String @id @default(uuid())
-  gramWeight Decimal
-  isCooked Boolean @default(false)
-
-  recipes Recipe[]
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId String
@@ -109,7 +97,7 @@ model Plan {
 
 model Day {
   id  String    @id @default(uuid())
-  day DateTime?
+  day String? // optional so it is possible to create `Day`s for plans
 
   foodsOnDays FoodsOnDays[]
   recipesOnDays RecipesOnDays[]
@@ -118,7 +106,7 @@ model Day {
   weight Int?
   waist Decimal?
   neck Decimal?
-  calories Int @default(0) // re-calculate this every time something is modified in the day??
+  // calories Int @default(0) // re-calculate this every time something is modified in the day??
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId String
@@ -132,9 +120,8 @@ model FoodsOnDays {
 
   scale Decimal @default(1)
 
-  // if foodUnitId is null, assume we're using grams
-  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: SetNull)
-  foodUnitId String?
+  foodUnit   FoodUnit @relation(fields: [foodUnitId], references: [id], onDelete: Restrict)
+  foodUnitId String
 
   @@id([foodId, dayId])
 }
@@ -209,49 +196,52 @@ model FoodsOnMeals {
 }
 
 model Recipe {
-  id      String   @id @default(uuid())
+  id String @id @default(uuid())
   created DateTime @default(now())
-  name    String
-  saved   Boolean  @default(false)
+  name String
+  saved Boolean @default(false)
+  scale Decimal @default(1)
 
   foodsOnRecipes FoodsOnRecipes[]
   recipesOnMeals RecipesOnMeals[]
   recipesOnDays  RecipesOnDays[]
 
-  // duplicatedFrom String?
-  // recipe Recipe? @relation("RecipeDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
-  // duplications Recipe[] @relation("RecipeDuplications")
+  owningBatchRecipeId String?
+  batchRecipe Recipe? @relation("RecipeOnBatchRecipes", fields: [owningBatchRecipeId], references: [id], onDelete: SetNull)
+  batchRecipes Recipe[] @relation("RecipeOnBatchRecipes")
+
+  gramWeight Decimal?
+
+  isBatchRecipe Boolean @default(false)
+  isBatchRecipeCooked Boolean?
+  isBatchRecipeEaten Boolean?
 
   directions String[]
-
-  batchRecipe BatchRecipe? @relation(fields: [batchRecipeId], references: [id], onDelete: SetNull)
-  batchRecipeId String?
 
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId String
 }
 
 model FoodsOnRecipes {
-  food     Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
-  foodId   String
-  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  id String @id @default(uuid())
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   recipeId String
 
   scale Decimal @default(1)
-  note String
+  note String?
 
-  // if foodUnitId is null, assume we're using grams
-  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: SetNull)
-  foodUnitId String?
-
-  @@id([foodId, recipeId])
+  foodUnit FoodUnit @relation(fields: [foodUnitId], references: [id], onDelete: Restrict)
+  foodUnitId String
 }
 
 model Food {
   id         String   @id @default(uuid())
   created    DateTime @default(now())
   name       String
-  gramWeight Decimal? // what nutrients of the food will be based on
+  gramWeight Decimal? // what nutrients of the food will be based on; optional
+                      // b/c you might not want to enter weight for custom food
 
   // might not be necessary anymore
   // saved      Boolean  @default(false)
@@ -299,7 +289,7 @@ model FoodUnit {
   sixteenths Boolean @default(false)
 
   unitToGramRatio Decimal // = X / Food.gramWeight
-  // gramWeight Decimal
+  gramWeight Decimal
 
   food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
   foodId String

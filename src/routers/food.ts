@@ -52,7 +52,16 @@ foodRouter.get(
           search: formattedSearch,
         },
       },
-      take: 10
+      include: {
+        foodUnits: true,
+        nutrientsOnFoods: {
+          include: {
+            nutrient: true,
+            unit: true,
+          },
+        },
+      },
+      take: 10,
     });
 
     // Only return global foods and custom foods the user owns.
@@ -185,6 +194,7 @@ foodRouter.post(
                 abbreviation: servingUnitName,
                 servingSizeAmount: servingUnitAmount,
                 unitToGramRatio: 100,
+                gramWeight: 100,
               }
             ]
           }

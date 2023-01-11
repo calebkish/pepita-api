@@ -1,9 +1,11 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import { prismaClient } from '../db.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
 import { isValid } from '../middleware/is-valid.js';
+import { isNumber } from '../validators/is-number.js';
 // import { duplicateFood } from '../util/entity/duplicate-food.js';
+import { notEmpty } from '../validators/not-empty.js';
 
 const recipeRouter = express.Router();
 
@@ -25,6 +27,12 @@ recipeRouter.get(
             food: {
               include: {
                 foodUnits: true,
+                nutrientsOnFoods: {
+                  include: {
+                    nutrient: true,
+                    unit: true,
+                  }
+                }
               },
             },
             foodUnit: true,
@@ -37,89 +45,164 @@ recipeRouter.get(
   }
 );
 
-/// Create a recipe
-recipeRouter.post(
-  '/',
+
+// Get a Recipe
+recipeRouter.get(
+  '/:id',
   isAuthorized,
-  body('name').trim().notEmpty(),
+  param('id').custom(notEmpty),
   isValid,
-  async (req, res) => {
-    const { name } = req.body;
+  async(req, res, next) => {
     const { accountId } = res.locals;
-    const recipe = await prismaClient.recipe.create({
-      data: {
-        name,
-        accountId,
-        saved: true,
+
+    const recipe = await prismaClient.recipe.findUnique({
+      where: {
+        id: req.params.id,
+      },
+      include: {
+        foodsOnRecipes: {
+          include: {
+            food: {
+              include: {
+                foodUnits: true,
+                nutrientsOnFoods: {
+                  include: {
+                    nutrient: true,
+                    unit: true,
+                  }
+                }
+              },
+            },
+            foodUnit: true,
+          },
+        },
       },
     });
 
-    return res.status(200).send(recipe);
+    if (recipe === null) {
+      res.sendStatus(404);
+      next();
+      return;
+    }
+
+    res.status(200).send(recipe);
+    next();
+    return;
   }
 );
 
-// Add a food to a recipe
-// recipeRouter.put(
-//   '/food',
-//   isAuthorized,
-//   body('scale').isInt(),
-//   body('foodId').isUUID(),
-//   body('foodUnitId').optional().isUUID(),
-//   body('recipeId').isUUID(),
-//   isValid,
-//   async (req, res) => {
-//     const { recipeId, foodId, scale, foodUnitId } = req.body;
-//
-//     const recipe = await prismaClient.$transaction(async (tx) => {
-//       const dupFoodResponse = await duplicateFood(tx, foodId);
-//
-//       if (dupFoodResponse === null) {
-//         return null;
-//       }
-//
-//       const { duplicateFoodId, foodUnitMap } = dupFoodResponse;
-//
-//       console.log(dupFoodResponse);
-//       if (foodUnitId !== undefined && !dupFoodResponse.foodUnitMap.has(foodUnitId)) {
-//         return null;
-//       }
-//
-//       const recipe = await tx.recipe.update({
-//         where: {
-//           id: recipeId,
-//         },
-//         data: {
-//           foodsOnRecipes: {
-//             create: {
-//               scale,
-//               foodUnitId: foodUnitMap.get(foodUnitId),
-//               foodId: duplicateFoodId,
-//             },
-//           },
-//         },
-//         include: {
-//           foodsOnRecipes: {
-//             include: {
-//               food: {
-//                 include: {
-//                   foodUnits: true,
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       });
-//
-//       return recipe;
-//     });
-//
-//     if (recipe === null) {
-//       return res.sendStatus(400);
-//     }
-//
-//     return res.status(200).send(recipe);
-//   }
-// );
+/// Create/replace a regular recipe
+recipeRouter.put(
+  '/',
+  isAuthorized,
+  body('name').custom(notEmpty),
+  body('directions').isArray(),
+  body('gramWeight').optional().custom(isNumber),
+  body('foods.*.food.id').custom(notEmpty),
+  body('foods.*.scale').custom(isNumber),
+  body('foods.*.foodUnit.id').custom(notEmpty),
+  body('recipeId').optional().custom(notEmpty),
+  isValid,
+  async (req, res, next) => {
+    const { name, foods, gramWeight, directions, recipeId } = req.body;
+    const { accountId } = res.locals;
 
+    await prismaClient.$transaction(async (tx) => {
+      if (recipeId) {
+        // await tx.foodsOnRecipes.deleteMany({
+        //   where: { recipeId, },
+        // });
+        const recipe = await tx.recipe.update({
+          where: {
+            id: recipeId,
+          },
+          data: {
+            name,
+            gramWeight,
+            foodsOnRecipes: {
+              deleteMany: [
+                {
+                  recipeId,
+                }
+              ],
+              createMany: {
+                data: foods.map(({ food, scale, foodUnit }: any) => ({
+                  foodId: food.id,
+                  scale,
+                  foodUnitId: foodUnit.id,
+                })),
+              },
+            },
+          },
+          include: {
+            foodsOnRecipes: {
+              include: {
+                food: {
+                  include: {
+                    foodUnits: true,
+                  },
+                },
+                foodUnit: true,
+              },
+            },
+          },
+        });
+        res.status(200).send(recipe);
+        next();
+        return;
+      }
+
+      const recipe = await tx.recipe.create({
+        data: {
+          name,
+          directions,
+          saved: true,
+          accountId,
+          gramWeight,
+          foodsOnRecipes: {
+            createMany: {
+              data: foods.map(({ food, scale, foodUnit }: any) => ({
+                foodId: food.id,
+                scale,
+                foodUnitId: foodUnit.id,
+              })),
+            },
+          },
+        },
+        include: {
+          foodsOnRecipes: {
+            include: {
+              food: {
+                include: {
+                  foodUnits: true,
+                },
+              },
+              foodUnit: true,
+            },
+          },
+        },
+      });
+
+      res.status(200).send(recipe);
+      next();
+      return;
+    });
+  }
+);
+
+recipeRouter.delete(
+  '/:id',
+  param('id').isUUID(),
+  isAuthorized,
+  async (req, res, next) => {
+    await prismaClient.recipe.delete({
+      where: { id: req.params.id },
+    });
+
+    res.sendStatus(200);
+    next();
+    return;
+  },
+)
 
 export default recipeRouter;

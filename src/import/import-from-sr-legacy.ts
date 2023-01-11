@@ -3,7 +3,6 @@ import { prismaClient } from '../db.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-
 type TransactionOperation = 'break' | 'continue' | undefined;
 
 const dataPath = path.join('src', 'import', 'data', 'sr-legacy-oct-2021.json');

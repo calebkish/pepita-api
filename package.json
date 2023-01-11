@@ -11,7 +11,8 @@
     "start:nodemon": "NODE_OPTIONS='--loader ts-node/esm' nodemon ./src/app.ts",
     "prisma": "prisma",
     "import-data": "ts-node ./src/import/import-from-usda.ts",
-    "import-test": "ts-node ./src/import/test.ts"
+    "import-test": "ts-node ./src/import/test.ts",
+    "sr-legacy-csv": "ts-node ./src/import/import-from-sr-legacy-csv.ts"
   },
   "author": "",
   "license": "ISC",
@@ -33,6 +34,8 @@
     "@types/express": "^4.17.13",
     "@types/express-validator": "^3.0.0",
     "@types/jsonwebtoken": "^8.5.9",
+    "csv-parse": "^5.3.3",
+    "fast-csv": "^4.3.6",
     "nodemon": "^2.0.20",
     "prisma": "^4.3.1",
     "prisma-json-schema-generator": "^3.1.1",

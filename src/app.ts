@@ -6,6 +6,8 @@ import foodRouter from './routers/food.js';
 import unitRouter from './routers/unit.js';
 import recipeRouter from './routers/recipe.js';
 import categoryRouter from './routers/category.js';
+import dayRouter from './routers/day.js';
+import mealRouter from './routers/meal.js';
 
 const app = express();
 
@@ -45,6 +47,8 @@ app.use('/food', foodRouter);
 app.use('/unit', unitRouter);
 app.use('/recipe', recipeRouter);
 app.use('/categories', categoryRouter);
+app.use('/day', dayRouter);
+app.use('/meal', mealRouter);
 
 const port = 3000;
 

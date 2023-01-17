@@ -6,15 +6,18 @@ export const isAuthorized = (req: express.Request, res: express.Response, next: 
   const token = req.cookies.access_token;
 
   if (!token) {
-    return res.sendStatus(401);
+    res.sendStatus(401);
+    return;
   }
   try {
     const payload = jsonwebtoken.verify(token, accountJwtSecret) as JwtPayload;
     res.locals.accountEmail = payload.email;
     res.locals.accountId = payload.id;
     res.locals.accountRole = payload.role;
-    return next();
+    next();
+    return
   } catch {
-    return res.clearCookie('access_token').sendStatus(401);
+    res.clearCookie('access_token').sendStatus(401);
+    return;
   }
 };

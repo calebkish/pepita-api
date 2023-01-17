@@ -1,10 +1,10 @@
 import { FoodCategory } from '@prisma/client';
 import express from 'express';
-import { AllowedSchema, Validator } from 'express-json-validator-middleware';
-import { body, param, query } from 'express-validator';
+import { body, oneOf, param, query } from 'express-validator';
 import { prismaClient } from '../db.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
 import { isValid } from '../middleware/is-valid.js';
+import { recipeInclude } from './recipe.js';
 
 const foodRouter = express.Router();
 
@@ -37,38 +37,76 @@ foodRouter.get(
   async (req, res) => {
     const search = req.query.q!;
 
+    const parts = Array.isArray(req.query.parts)
+      ? req.query.parts as string[]
+      : [req.query.parts as string];
+
     if (Array.isArray(search) || typeof search === 'object') {
       return res.sendStatus(400);
     }
 
-    const formattedSearch = search
-      .replaceAll(/\s+/g, '&');
+    const formattedSearch = decodeURIComponent(search).trim().replaceAll(/\s+/g, ' | ');
 
     const { accountId } = res.locals;
 
-    const foods = await prismaClient.food.findMany({
-      where: {
-        name: {
-          search: formattedSearch,
+    const response: any = {};
+
+    if (parts.includes('foods')) {
+      response.foods = await prismaClient.food.findMany({
+        where: {
+          name: {
+            search: formattedSearch,
+          },
+          OR: [
+            { accountId: null },
+            { accountId },
+          ]
         },
-      },
-      include: {
-        foodUnits: true,
-        nutrientsOnFoods: {
-          include: {
-            nutrient: true,
-            unit: true,
+        include: {
+          foodUnits: true,
+          nutrientsOnFoods: {
+            include: {
+              nutrient: true,
+              unit: true,
+            },
           },
         },
-      },
-      take: 10,
-    });
+        take: 20,
+      });
+    }
+
+    if (parts.includes('recipes')) {
+      response.recipes = await prismaClient.recipe.findMany({
+        where: {
+          name: {
+            search: formattedSearch,
+          },
+          accountId,
+          isBatchRecipe: false,
+          saved: true,
+        },
+        include: recipeInclude,
+        take: 10,
+      });
+    }
+
+
+    if (parts.includes('batchRecipes')) {
+      response.batchRecipes = await prismaClient.recipe.findMany({
+        where: {
+          name: {
+            search: formattedSearch,
+          },
+          accountId,
+          isBatchRecipe: true,
+        },
+        include: recipeInclude,
+        take: 10,
+      });
+    }
 
     // Only return global foods and custom foods the user owns.
-    return res.status(200).send(foods.filter(food => {
-      const isGlobal = food.accountId === null;
-      return isGlobal || food.accountId === accountId;
-    }));
+    return res.status(200).send(response);
   },
 );
 

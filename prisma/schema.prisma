@@ -210,10 +210,10 @@ model Recipe {
   batchRecipe Recipe? @relation("RecipeOnBatchRecipes", fields: [owningBatchRecipeId], references: [id], onDelete: SetNull)
   batchRecipes Recipe[] @relation("RecipeOnBatchRecipes")
 
+  // We assume a batch recipe is cooked if gramWeight is set
   gramWeight Decimal?
 
   isBatchRecipe Boolean @default(false)
-  isBatchRecipeCooked Boolean?
   isBatchRecipeEaten Boolean?
 
   directions String[]

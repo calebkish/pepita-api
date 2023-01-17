@@ -8,13 +8,14 @@ import recipeRouter from './routers/recipe.js';
 import categoryRouter from './routers/category.js';
 import dayRouter from './routers/day.js';
 import mealRouter from './routers/meal.js';
+import batchRecipeRouter from './routers/batch-recipe.js';
 
 const app = express();
 
 app.use(express.json());
 
 // A secret can be passed in first param...idk what it is.
-app.use(cookieParser('cookieSecret'));
+// app.use(cookieParser('cookieSecret'));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
@@ -31,7 +32,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const whitelist = ['http://localhost:4200', 'http://127.0.0.1:4200']
+const whitelist = ['http://localhost:4200', 'http://127.0.0.1:4200'];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || whitelist.indexOf(origin) !== -1) {
@@ -49,6 +50,7 @@ app.use('/recipe', recipeRouter);
 app.use('/categories', categoryRouter);
 app.use('/day', dayRouter);
 app.use('/meal', mealRouter);
+app.use('/batch-recipe', batchRecipeRouter);
 
 const port = 3000;
 

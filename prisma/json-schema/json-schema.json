@@ -419,12 +419,6 @@
           "type": "boolean",
           "default": false
         },
-        "isBatchRecipeCooked": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
         "isBatchRecipeEaten": {
           "type": [
             "boolean",

@@ -1,5 +1,5 @@
 import express from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import { prismaClient } from '../db.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
 import { isValid } from '../middleware/is-valid.js';
@@ -8,6 +8,25 @@ import { isNumber } from '../validators/is-number.js';
 import { notEmpty } from '../validators/not-empty.js';
 
 const recipeRouter = express.Router();
+
+export const recipeInclude = {
+  foodsOnRecipes: {
+    include: {
+      food: {
+        include: {
+          foodUnits: true,
+          nutrientsOnFoods: {
+            include: {
+              nutrient: true,
+              unit: true,
+            }
+          }
+        },
+      },
+      foodUnit: true,
+    },
+  },
+};
 
 // Get all saved Recipes &> Foods &> FoodUnits
 recipeRouter.get(
@@ -21,24 +40,7 @@ recipeRouter.get(
         accountId,
         saved: true,
       },
-      include: {
-        foodsOnRecipes: {
-          include: {
-            food: {
-              include: {
-                foodUnits: true,
-                nutrientsOnFoods: {
-                  include: {
-                    nutrient: true,
-                    unit: true,
-                  }
-                }
-              },
-            },
-            foodUnit: true,
-          },
-        },
-      },
+      include: recipeInclude,
     });
 
     return res.status(200).send(recipes);
@@ -59,24 +61,7 @@ recipeRouter.get(
       where: {
         id: req.params.id,
       },
-      include: {
-        foodsOnRecipes: {
-          include: {
-            food: {
-              include: {
-                foodUnits: true,
-                nutrientsOnFoods: {
-                  include: {
-                    nutrient: true,
-                    unit: true,
-                  }
-                }
-              },
-            },
-            foodUnit: true,
-          },
-        },
-      },
+      include: recipeInclude,
     });
 
     if (recipe === null) {
@@ -91,13 +76,48 @@ recipeRouter.get(
   }
 );
 
-/// Create/replace a regular recipe
+
+// Search for a recipe
+// recipeRouter.get(
+//   '/search',
+//   isAuthorized,
+//   query('q').trim().notEmpty().isString(),
+//   isValid,
+//   async (req, res) => {
+//     const search = req.query.q!;
+//
+//     if (Array.isArray(search) || typeof search === 'object') {
+//       return res.sendStatus(400);
+//     }
+//
+//     const formattedSearch = search.replaceAll(/\s+/g, '|');
+//
+//     const { accountId } = res.locals;
+//
+//     const recipes = await prismaClient.recipe.findMany({
+//       where: {
+//         name: {
+//           search: formattedSearch,
+//         },
+//         accountId,
+//         isBatchRecipe: false,
+//       },
+//       include: recipeInclude,
+//       take: 10,
+//     });
+//
+//     // Only return global foods and custom foods the user owns.
+//     return res.status(200).send(recipes);
+//   },
+// );
+
+/// Upsert a regular recipe
 recipeRouter.put(
   '/',
   isAuthorized,
   body('name').custom(notEmpty),
   body('directions').isArray(),
-  body('gramWeight').optional().custom(isNumber),
+  body('gramWeight').optional({ nullable: true }).custom(isNumber),
   body('foods.*.food.id').custom(notEmpty),
   body('foods.*.scale').custom(isNumber),
   body('foods.*.foodUnit.id').custom(notEmpty),
@@ -109,9 +129,6 @@ recipeRouter.put(
 
     await prismaClient.$transaction(async (tx) => {
       if (recipeId) {
-        // await tx.foodsOnRecipes.deleteMany({
-        //   where: { recipeId, },
-        // });
         const recipe = await tx.recipe.update({
           where: {
             id: recipeId,
@@ -195,11 +212,11 @@ recipeRouter.delete(
   param('id').isUUID(),
   isAuthorized,
   async (req, res, next) => {
-    await prismaClient.recipe.delete({
+    const deletedRecipe = await prismaClient.recipe.delete({
       where: { id: req.params.id },
     });
 
-    res.sendStatus(200);
+    res.status(200).send(deletedRecipe);
     next();
     return;
   },

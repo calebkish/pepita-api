@@ -1,44 +1,69 @@
-import express from "express";
-import { body } from "express-validator";
-import { isAuthorized } from "../middleware/is-authorized.js";
-import { isValid } from "../middleware/is-valid.js";
-import { isNumber } from "../validators/is-number.js";
-import { notEmpty } from "../validators/not-empty.js";
+import express from 'express';
+import { body, oneOf } from 'express-validator';
 import { prismaClient } from '../db.js';
-import { FoodOnRecipeFormArrayItem, foodOnRecipeFormArrayItemValidator } from "../models/food-on-recipe-form-array-item.js";
+import { isAuthorized } from '../middleware/is-authorized.js';
+import { isValid } from '../middleware/is-valid.js';
+import { FoodOnRecipeFormArrayItem, foodOnRecipeFormArrayItemValidator } from '../models/food-on-recipe-form-array-item.js';
+import { isNumber } from '../validators/is-number.js';
+import { notEmpty } from '../validators/not-empty.js';
 
-const batchRecipeRouter = express.Router();
+const recipeInstanceRouter = express.Router();
 
-/// Upsert a batch recipe
-batchRecipeRouter.put(
+export const recipeInclude = {
+  foodsOnRecipes: {
+    include: {
+      food: {
+        include: {
+          foodUnits: true,
+          nutrientsOnFoods: {
+            include: {
+              nutrient: true,
+              unit: true,
+            }
+          }
+        },
+      },
+      foodUnit: true,
+    },
+  },
+};
+
+/// Upsert a regular recipe
+recipeInstanceRouter.put(
   '/',
   isAuthorized,
   body('name').custom(notEmpty),
   body('directions').isArray(),
   body('gramWeight').optional({ nullable: true }).custom(isNumber),
   ...foodOnRecipeFormArrayItemValidator,
-  body('batchRecipeId').optional().custom(notEmpty),
+  body('recipeScale').custom(isNumber),
+  oneOf([
+    // if this is provided, create a new recipe instance
+    body('mealId').isUUID(),
+    // if this is provided, update this recipe instance using data in body
+    body('recipeInstanceId').custom(notEmpty),
+  ]),
   isValid,
   async (req, res, next) => {
-    const { name, foods, gramWeight, directions, batchRecipeId } = req.body;
+    const { name, foods, gramWeight, directions, recipeInstanceId, mealId, recipeScale } = req.body;
     const { accountId } = res.locals;
 
     const foodsOnRecipeItems: FoodOnRecipeFormArrayItem[] = foods;
 
     await prismaClient.$transaction(async (tx) => {
-      if (batchRecipeId) {
+      if (recipeInstanceId) {
         const recipe = await tx.recipe.update({
           where: {
-            id: batchRecipeId,
+            id: recipeInstanceId,
           },
           data: {
-            isBatchRecipe: true,
             name,
             gramWeight,
+            scale: recipeScale,
             foodsOnRecipes: {
               deleteMany: [
                 {
-                  recipeId: batchRecipeId,
+                  recipeId: recipeInstanceId,
                 }
               ],
               createMany: {
@@ -60,18 +85,7 @@ batchRecipeRouter.put(
               },
             },
           },
-          include: {
-            foodsOnRecipes: {
-              include: {
-                food: {
-                  include: {
-                    foodUnits: true,
-                  },
-                },
-                foodUnit: true,
-              },
-            },
-          },
+          include: recipeInclude,
         });
         res.status(200).send(recipe);
         next();
@@ -80,12 +94,11 @@ batchRecipeRouter.put(
 
       const recipe = await tx.recipe.create({
         data: {
-          saved: true,
-          isBatchRecipe: true,
           name,
           directions,
           accountId,
           gramWeight,
+          scale: recipeScale,
           foodsOnRecipes: {
             createMany: {
               data: foodsOnRecipeItems.map(foodOnRecipe => ({
@@ -106,17 +119,12 @@ batchRecipeRouter.put(
             },
           },
         },
-        include: {
-          foodsOnRecipes: {
-            include: {
-              food: {
-                include: {
-                  foodUnits: true,
-                },
-              },
-              foodUnit: true,
-            },
-          },
+        include: recipeInclude,
+      });
+      await tx.recipesOnMeals.create({
+        data: {
+          mealId,
+          recipeId: recipe.id,
         },
       });
 
@@ -127,6 +135,4 @@ batchRecipeRouter.put(
   }
 );
 
-
-
-export default batchRecipeRouter;
+export default recipeInstanceRouter;

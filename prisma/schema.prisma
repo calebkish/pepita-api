@@ -1,13 +1,14 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["referentialIntegrity", "interactiveTransactions", "fullTextSearch"]
-  binaryTargets   = ["debian-openssl-3.0.x", "native"]
+  provider = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity", "interactiveTransactions", "postgresqlExtensions"]
+  binaryTargets = ["debian-openssl-3.0.x", "native"]
 }
 
 datasource db {
-  provider             = "postgresql"
-  url                  = env("DATABASE_URL")
+  provider = "postgresql"
+  url = env("DATABASE_URL")
   referentialIntegrity = "foreignKeys"
+  extensions = [pg_trgm, pgcrypto, uuidOssp(map: "uuid-ossp")]
 }
 
 generator jsonSchema {
@@ -57,12 +58,80 @@ model Account {
   days    Day[]
   plans   Plan[]
   mealTemplates MealTemplate[]
+
+  stores Store[]
+  storeLocations StoreLocation[]
+  shoppingLists ShoppingList[]
 }
 
 enum Role {
   USER
   ADMIN
 }
+
+// =============================================================================
+model Store {
+  id String @id @default(uuid())
+  name String
+
+  locations StoreLocation[]
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+}
+
+model StoreLocation {
+  id String @id @default(uuid())
+  name String
+
+  store Store @relation(fields: storeId, references: [id], onDelete: Cascade)
+  storeId String
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  foodsOnStoreLocations FoodsOnStoreLocations[]
+}
+
+model ShoppingList {
+  id String @id @default(uuid())
+  name String
+  // foodsOnMeals String[]
+  // recipesOnMeals String[]
+
+  startDay String
+  endDay String
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  purchasedFoodsIds String[]
+
+  foods FoodsOnShoppingList[]
+}
+
+model FoodsOnShoppingList {
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  shoppingListId String
+
+  puchased Boolean @default(false)
+
+  @@id([foodId, shoppingListId])
+}
+
+model FoodsOnStoreLocations {
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId String
+
+  storeLocation StoreLocation @relation(fields: [storeLocationId], references: [id], onDelete: Cascade)
+  storeLocationId String
+
+  @@id([foodId, storeLocationId])
+}
+// =============================================================================
 
 model MealTemplate {
   id String @id @default(uuid())
@@ -99,42 +168,19 @@ model Day {
   id  String    @id @default(uuid())
   day String? // optional so it is possible to create `Day`s for plans
 
-  foodsOnDays FoodsOnDays[]
-  recipesOnDays RecipesOnDays[]
   mealsOnDays MealsOnDays[]
 
   weight Int?
   waist Decimal?
   neck Decimal?
-  // calories Int @default(0) // re-calculate this every time something is modified in the day??
+
+  calories Decimal @default(0)
+  protein Decimal @default(0)
+  carbohydrates Decimal @default(0)
+  fat Decimal @default(0)
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId String
-}
-
-model FoodsOnDays {
-  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
-  foodId String
-  day    Day    @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  dayId  String
-
-  scale Decimal @default(1)
-
-  foodUnit   FoodUnit @relation(fields: [foodUnitId], references: [id], onDelete: Restrict)
-  foodUnitId String
-
-  @@id([foodId, dayId])
-}
-
-model RecipesOnDays {
-  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  recipeId String
-  day      Day    @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  dayId    String
-
-  scale Decimal @default(1)
-
-  @@id([recipeId, dayId])
 }
 
 model MealsOnDays {
@@ -157,10 +203,6 @@ model Meal {
   foodsOnMeals   FoodsOnMeals[]
   recipesOnMeals RecipesOnMeals[]
   mealsOnDays    MealsOnDays[]
-
-  // duplicatedFrom String?
-  // meal Meal? @relation("MealDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
-  // duplications Meal[] @relation("MealDuplications")
 
   mealTemplate MealTemplate? @relation(fields: [mealTemplateId], references: [id], onDelete: SetNull)
   mealTemplateId String?
@@ -186,11 +228,21 @@ model FoodsOnMeals {
   meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
   mealId String
 
-  scale Decimal @default(1)
+  scaleBase Int @default(1)
+  scaleNumerator Int @default(1)
+  scaleDenominator Int @default(1)
+  scaleDecimal Decimal @default(1)
+  shouldUseScaleDecimal Boolean @default(false)
+  // === STEP OVERRIDES ===
+  halves     Boolean @default(false)
+  thirds     Boolean @default(false)
+  fourths    Boolean @default(false)
+  sixths     Boolean @default(false)
+  eighths    Boolean @default(false)
+  sixteenths Boolean @default(false)
 
-  // if foodUnitId is null, assume we're using grams
-  foodUnit   FoodUnit? @relation(fields: [foodUnitId], references: [id], onDelete: Cascade)
-  foodUnitId String?
+  foodUnit   FoodUnit @relation(fields: [foodUnitId], references: [id], onDelete: Cascade)
+  foodUnitId String
 
   @@id([foodId, mealId])
 }
@@ -204,17 +256,16 @@ model Recipe {
 
   foodsOnRecipes FoodsOnRecipes[]
   recipesOnMeals RecipesOnMeals[]
-  recipesOnDays  RecipesOnDays[]
 
-  owningBatchRecipeId String?
+  owningBatchRecipeId String? // on batch recipe instances
   batchRecipe Recipe? @relation("RecipeOnBatchRecipes", fields: [owningBatchRecipeId], references: [id], onDelete: SetNull)
   batchRecipes Recipe[] @relation("RecipeOnBatchRecipes")
 
   // We assume a batch recipe is cooked if gramWeight is set
   gramWeight Decimal?
 
-  isBatchRecipe Boolean @default(false)
-  isBatchRecipeEaten Boolean?
+  isBatchRecipe Boolean @default(false) // on batch recipes
+  isBatchRecipeEaten Boolean? // on batch recipes
 
   directions String[]
 
@@ -229,45 +280,68 @@ model FoodsOnRecipes {
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   recipeId String
 
-  scale Decimal @default(1)
   note String?
+
+  scaleBase Int @default(1)
+  scaleNumerator Int @default(1)
+  scaleDenominator Int @default(1)
+  scaleDecimal Decimal @default(1)
+  shouldUseScaleDecimal Boolean @default(false)
+  // === STEP OVERRIDES ===
+  halves     Boolean @default(false)
+  thirds     Boolean @default(false)
+  fourths    Boolean @default(false)
+  sixths     Boolean @default(false)
+  eighths    Boolean @default(false)
+  sixteenths Boolean @default(false)
 
   foodUnit FoodUnit @relation(fields: [foodUnitId], references: [id], onDelete: Restrict)
   foodUnitId String
+}
+
+model FoodBrand {
+  id String @id @default(uuid())
+  name String
+
+  foods Food[]
+}
+
+enum BaseFoodUnit {
+  g
+  ml
 }
 
 model Food {
   id         String   @id @default(uuid())
   created    DateTime @default(now())
   name       String
-  gramWeight Decimal? // what nutrients of the food will be based on; optional
-                      // b/c you might not want to enter weight for custom food
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
 
-  // might not be necessary anymore
-  // saved      Boolean  @default(false)
+  baseUnitAmount Decimal? // what nutrients of the food will be based on; optional
+  baseUnit String?    // b/c you might not want to enter weight for custom food
 
-  // duplicatedFrom String?
-  // food Food? @relation("FoodDuplications", fields: [duplicatedFrom], references: [id], onDelete: SetNull)
-  // duplications Food[] @relation("FoodDuplications")
+  source String?
+  fdcId Int? @unique // Food Data Central ID
 
-  source       String?
-  usdaDataType String?
-  fdcId        Int?    @unique // Food Data Central ID
+  foodBrand FoodBrand? @relation(fields: [foodBrandId], references: [id], onDelete: SetNull)
+  foodBrandId String?
 
-  foodCategory   FoodCategory? @relation(fields: [foodCategoryId], references: [id], onDelete: Restrict)
+  foodCategory FoodCategory? @relation(fields: [foodCategoryId], references: [id], onDelete: Restrict)
   foodCategoryId String?
 
-  foodUnits        FoodUnit[]
+  foodUnits FoodUnit[]
   nutrientsOnFoods NutrientsOnFoods[]
 
   recipes FoodsOnRecipes[]
-  meals   FoodsOnMeals[]
-  days    FoodsOnDays[]
+  meals FoodsOnMeals[]
+
+  shoppingLists FoodsOnShoppingList[]
+  locations FoodsOnStoreLocations[]
 
   // If null, assume this is a "global" food
     // can only be modified by someone with Admin role
     // users can create a copy of the food if they want to customize it
-  account   Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId String?
 }
 
@@ -288,15 +362,16 @@ model FoodUnit {
   eighths    Boolean @default(false)
   sixteenths Boolean @default(false)
 
-  unitToGramRatio Decimal // = X / Food.gramWeight
-  gramWeight Decimal
+  // unitToGramRatio Decimal
+  // gramWeight Decimal
+  baseUnitAmountRatio Decimal // = X / Food.baseAmount
+  foodUnitAmount Decimal
 
   food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
   foodId String
 
   foodsOnRecipes FoodsOnRecipes[]
   foodsOnMeals   FoodsOnMeals[]
-  foodsOnDays    FoodsOnDays[]
   Unit           Unit?            @relation(fields: [unitId], references: [id])
   unitId         String?
 }

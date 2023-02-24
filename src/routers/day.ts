@@ -9,32 +9,6 @@ const dayRouter = express.Router();
 
 const dayInclude = {
   include: {
-    foodsOnDays: {
-      include: {
-        food: {
-          include: {
-            foodUnits: true,
-          },
-        },
-      },
-    },
-    recipesOnDays: {
-      include: {
-        recipe: {
-          include: {
-            foodsOnRecipes: {
-              include: {
-                food: {
-                  include: {
-                    foodUnits: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
     mealsOnDays: {
       include: {
         meal: {
@@ -49,8 +23,15 @@ const dayInclude = {
                         food: {
                           include: {
                             foodUnits: true,
+                            nutrientsOnFoods: {
+                              include: {
+                                nutrient: true,
+                                unit: true,
+                              }
+                            }
                           },
                         },
+                        foodUnit: true,
                       },
                     },
                   },
@@ -59,9 +40,16 @@ const dayInclude = {
             },
             foodsOnMeals: {
               include: {
+                foodUnit: true,
                 food: {
                   include: {
                     foodUnits: true,
+                    nutrientsOnFoods: {
+                      include: {
+                        nutrient: true,
+                        unit: true,
+                      }
+                    }
                   },
                 },
               },
@@ -114,6 +102,85 @@ dayRouter.get(
     return;
   }
 );
+
+// const getDateRange = (start: Date, end: Date) => {
+//   for(var arr=[], dt = new Date(start); dt <= new Date(end); dt.setDate(dt.getDate()+1)) {
+//       arr.push(new Date(dt));
+//   }
+//   return arr;
+// };
+//
+// const isoToUtcDate = (iso: string): Date => {
+//   const [year, month, day] = iso.split('-');
+//
+//   if (
+//     !year ||
+//     Number.isNaN(Number(year)) ||
+//     !month ||
+//     Number.isNaN(Number(month)) ||
+//     !day ||
+//     Number.isNaN(Number(day))
+//   ) {
+//     throw new Error('Failed to convert ISO timestamp to day');
+//   }
+//
+//   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+// };
+
+// Get a range of days
+// dayRouter.get(
+//   '/:day/range',
+//   isAuthorized,
+//   param('start').isDate(),
+//   param('end').isDate(),
+//   isValid,
+//   async (req, res, next) => {
+//     const { start, end } = req.params;
+//
+//     const { accountId } = res.locals;
+//
+//     const startDate = isoToUtcDate(start);
+//     const endDate = isoToUtcDate(end);
+//
+//     const range = getDateRange(startDate, endDate).map(d => d.toISOString().split('T')[0]);
+//
+//     const days = await prismaClient.day.findMany({
+//       where: {
+//         accountId,
+//         OR: range.map(day => {
+//           return { day };
+//         }),
+//       },
+//       ...dayInclude,
+//     });
+//
+//     if (days === null || days.length === 0) {
+//       res.sendStatus(404);
+//       return;
+//     }
+//
+//     for (const day of days) {
+//       day.mealsOnDays = day.mealsOnDays.sort((a, b) => {
+//         const aOrder = a.meal.mealTemplate?.order;
+//         const bOrder = b.meal.mealTemplate?.order;
+//
+//         if (aOrder === undefined && bOrder !== undefined) {
+//           return 1;
+//         } else if (aOrder !== undefined && bOrder === undefined) {
+//           return -1;
+//         } else if (aOrder === undefined && bOrder === undefined) {
+//           return 0;
+//         } else {
+//           return aOrder! - bOrder!;
+//         }
+//       });
+//     }
+//
+//     res.status(200).send(days);
+//     next();
+//     return;
+//   }
+// );
 
 // Create meal and add onto day
 dayRouter.post(
@@ -368,7 +435,7 @@ dayRouter.delete(
         return;
       }
 
-      const recipeIdsFromRecipesOnDays = day.recipesOnDays.map(rod => rod.recipeId);
+      // const recipeIdsFromRecipesOnDays = day.recipesOnDays.map(rod => rod.recipeId);
 
       const recipeIdsFromMealsOnDays = day.mealsOnDays
         .map(mod => mod.meal.recipesOnMeals)
@@ -380,7 +447,8 @@ dayRouter.delete(
       await tx.recipe.deleteMany({
         where: {
           id: {
-            in: recipeIdsFromRecipesOnDays.concat(recipeIdsFromMealsOnDays),
+            // in: recipeIdsFromRecipesOnDays.concat(recipeIdsFromMealsOnDays),
+            in: recipeIdsFromMealsOnDays,
           },
         },
       });

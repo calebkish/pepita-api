@@ -1,10 +1,10 @@
-import { FoodCategory } from '@prisma/client';
+import { Food, FoodCategory, Recipe } from '@prisma/client';
 import express from 'express';
 import { body, oneOf, param, query } from 'express-validator';
 import { prismaClient } from '../db.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
 import { isValid } from '../middleware/is-valid.js';
-import { recipeInclude } from './recipe.js';
+import { foodOnRecipeInclude } from './recipe.js';
 
 const foodRouter = express.Router();
 
@@ -33,80 +33,78 @@ foodRouter.get(
   '/search',
   isAuthorized,
   query('q').trim().notEmpty().isString(),
+  query('brandId').optional().trim().notEmpty().isString(),
   isValid,
   async (req, res) => {
+
     const search = req.query.q!;
-
-    const parts = Array.isArray(req.query.parts)
-      ? req.query.parts as string[]
-      : [req.query.parts as string];
-
-    if (Array.isArray(search) || typeof search === 'object') {
-      return res.sendStatus(400);
+    if (typeof search !== 'string') {
+      res.sendStatus(400);
+      return;
     }
 
-    const formattedSearch = decodeURIComponent(search).trim().replaceAll(/\s+/g, ' | ');
+    const brandId = req.query.brandId;
+    if (brandId && typeof brandId !== 'string') {
+      res.sendStatus(400);
+      return;
+    }
 
     const { accountId } = res.locals;
 
-    const response: any = {};
+    let response: Food[] = [];
 
-    if (parts.includes('foods')) {
-      response.foods = await prismaClient.food.findMany({
-        where: {
-          name: {
-            search: formattedSearch,
-          },
-          OR: [
-            { accountId: null },
-            { accountId },
-          ]
-        },
-        include: {
-          foodUnits: true,
-          nutrientsOnFoods: {
-            include: {
-              nutrient: true,
-              unit: true,
-            },
-          },
-        },
-        take: 20,
-      });
-    }
-
-    if (parts.includes('recipes')) {
-      response.recipes = await prismaClient.recipe.findMany({
-        where: {
-          name: {
-            search: formattedSearch,
-          },
-          accountId,
-          isBatchRecipe: false,
-          saved: true,
-        },
-        include: recipeInclude,
-        take: 10,
-      });
-    }
-
-
-    if (parts.includes('batchRecipes')) {
-      response.batchRecipes = await prismaClient.recipe.findMany({
-        where: {
-          name: {
-            search: formattedSearch,
-          },
-          accountId,
-          isBatchRecipe: true,
-        },
-        include: recipeInclude,
-        take: 10,
-      });
+    let queriedFoods: Array<Pick<Food, 'id'> & { similarity: number }> = [];
+    if (brandId) {
+      queriedFoods = await prismaClient.$queryRaw`
+        SELECT id, similarity("name", ${search}) AS similarity
+        FROM "Food"
+        WHERE "name" % ${search}
+          AND "foodBrandId" = ${brandId}
+          AND ("accountId" is NULL OR "accountId" = ${accountId})
+        ORDER BY similarity DESC
+        LIMIT 20
+      `;
+    } else {
+      queriedFoods = await prismaClient.$queryRaw`
+        SELECT id, similarity("name", ${search}) AS similarity
+        FROM "Food"
+        WHERE "name" % ${search}
+          AND ("accountId" is NULL OR "accountId" = ${accountId})
+        ORDER BY similarity DESC
+        LIMIT 20
+      `;
     }
 
     // Only return global foods and custom foods the user owns.
-    return res.status(200).send(response);
+    response = (await prismaClient.food.findMany({
+      where: {
+        id: {
+          in: queriedFoods.map(({ id }) => id),
+        },
+        // OR: [
+        //   { accountId: null },
+        //   { accountId },
+        // ]
+      },
+      include: {
+        foodUnits: true,
+        nutrientsOnFoods: {
+          include: {
+            nutrient: true,
+            unit: true,
+          },
+        },
+        foodBrand: true,
+      },
+    }))
+      .sort((a, b) => {
+        const aSimilarity = queriedFoods.find(q => q.id === a.id)?.similarity ?? 0;
+        const bSimilarity = queriedFoods.find(q => q.id === b.id)?.similarity ?? 0;
+        return bSimilarity - aSimilarity;
+      });
+
+    res.status(200).send(response);
+    return;
   },
 );
 
@@ -127,6 +125,12 @@ foodRouter.get(
       },
       include: {
         foodUnits: true,
+        nutrientsOnFoods: {
+          include: {
+            nutrient: true,
+            unit: true,
+          },
+        },
       },
     });
 
@@ -139,47 +143,9 @@ foodRouter.get(
     }
 
     return res.status(200).send(food);
-  }
+  },
 );
 
-// const createFoodBodySchema: AllowedSchema = {
-//   type: 'object',
-//   required: ['name'],
-//   properties: {
-//     name: {
-//       type: 'string',
-//     },
-//     gramWeight: {
-//       type: 'number',
-//     },
-//     foodCategory: {
-//       type: 'string',
-//     },
-//   }
-// };
-
-// const { validate } = new Validator({});
-
-/*
-{
-  "name": "salmon",
-  "category": "e3f9435f-172a-476f-a1ca-48fff59897e8",
-  "servingUnitAmount": 1,
-  "servingUnitName": "fillet",
-  "gramWeight": 555,
-  "foodUnits": [
-    {
-      "servingUnitAmount": 1,
-      "servingUnitName": "cup",
-      "gramWeight": 300
-    }
-  ],
-  "calories": 100,
-  "protein": 10,
-  "carbs": 10,
-  "fat": 10
-}
-*/
 
 // Create Food
 foodRouter.post(
@@ -202,7 +168,7 @@ foodRouter.post(
   isValid,
   // validate({ body: createFoodBodySchema }),
   async (req, res) => {
-    const { name, category, servingUnitAmount, servingUnitName, gramWeight, foodUnits } = req.body;
+    const { name, category, servingUnitAmount, servingUnitName, baseUnitAmount, foodUnits } = req.body;
     const { accountId } = res.locals;
 
     let foundCategory: FoodCategory | null = null;
@@ -223,7 +189,7 @@ foodRouter.post(
         name,
         accountId,
         foodCategoryId: foundCategory?.id ?? null,
-        gramWeight: gramWeight ?? null,
+        baseUnitAmount: baseUnitAmount ?? null,
         foodUnits: {
           createMany: {
             data: [
@@ -231,12 +197,12 @@ foodRouter.post(
                 name: servingUnitName,
                 abbreviation: servingUnitName,
                 servingSizeAmount: servingUnitAmount,
-                unitToGramRatio: 100,
-                gramWeight: 100,
-              }
-            ]
-          }
-        }
+                baseUnitAmountRatio: 100,
+                foodUnitAmount: 100,
+              },
+            ],
+          },
+        },
       },
     });
 

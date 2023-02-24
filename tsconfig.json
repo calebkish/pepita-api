@@ -11,6 +11,9 @@
     "sourceMap": true,
     "skipLibCheck": true,
 
+    "types": ["node"],
+    "lib": ["ESNext"],
+
     "strict": true,
     "forceConsistentCasingInFileNames": true
   },

@@ -3,8 +3,8 @@ import bcrypt from 'bcrypt';
 import { prismaClient } from '../db.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
 import { createAccountJwt } from '../util/create-account-jwt.js';
-import { body, CustomValidator } from 'express-validator';
-import { Account, MealTemplate } from '@prisma/client';
+import { body } from 'express-validator';
+import { Account } from '@prisma/client';
 import { isValid } from '../middleware/is-valid.js';
 import { isNumber } from '../validators/is-number.js';
 import { notEmpty } from '../validators/not-empty.js';
@@ -105,10 +105,9 @@ authRouter.post(
     return res
       .status(200)
       .cookie('access_token', token, {
-        httpOnly: false,
+        httpOnly: true,
         secure: false,
         sameSite: 'lax',
-        path: '/',
       })
       .send({
         email: account.email,
@@ -196,25 +195,34 @@ authRouter.post(
   body('autoCreatedMealTemplates[*].carbohydrates').custom(isNumber),
   body('autoCreatedMealTemplates[*].fat').custom(isNumber),
   isValid,
-  async (req, res) => {
+  async (req, res, next) => {
     const { accountId } = res.locals;
 
     const {
-      autoCreatedMealTemplates,
       dailyTargetCalories,
       dailyTargetProtein,
       dailyTargetCarbohydrates,
       dailyTargetFat,
     } = req.body;
 
+    const autoCreatedMealTemplates: Array<{
+      name: string,
+      order: number,
+      calories: number,
+      protein: number,
+      carbohydrates: number,
+      fat: number,
+    }> = req.body.autoCreatedMealTemplates;
+
     const orders = new Set<number>();
     for (const { order } of autoCreatedMealTemplates) {
       if (orders.has(order)) {
-        return res.sendStatus(400);
+        res.sendStatus(400);
+        next();
+        return;
       }
       orders.add(order);
     }
-
 
     const account = await prismaClient.account.update({
       where: { id: accountId },
@@ -222,10 +230,13 @@ authRouter.post(
         autoCreatedMealTemplates: {
           deleteMany: {},
           createMany: {
-            data: autoCreatedMealTemplates.map((template: any) => ({
-              ...template,
-              accountId,
-            })),
+            // @ts-ignore
+            data: autoCreatedMealTemplates.map(template => {
+              return {
+                ...template,
+                accountId,
+              };
+            }),
           },
         },
         dailyTargetCalories,
@@ -256,16 +267,20 @@ authRouter.post(
 
 
     if (account === null) {
-      return res.sendStatus(500);
+      res.sendStatus(500);
+      next();
+      return;
     }
 
-    return res.status(200).send({
+    res.status(200).send({
       autoCreatedMealTemplates: account.autoCreatedMealTemplates,
       dailyTargetProtein: account.dailyTargetProtein,
       dailyTartgetCalories: account.dailyTargetCalories,
       dailyTargetFat: account.dailyTargetFat,
       dailyTargetCarbohydrates: account.dailyTargetCarbohydrates,
     });
+    next();
+    return;
   }
 )
 

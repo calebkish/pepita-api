@@ -94,6 +94,125 @@
           "items": {
             "$ref": "#/definitions/MealTemplate"
           }
+        },
+        "stores": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Store"
+          }
+        },
+        "storeLocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StoreLocation"
+          }
+        },
+        "shoppingLists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ShoppingList"
+          }
+        }
+      }
+    },
+    "Store": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StoreLocation"
+          }
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        }
+      }
+    },
+    "StoreLocation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "store": {
+          "$ref": "#/definitions/Store"
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        },
+        "foodsOnStoreLocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnStoreLocations"
+          }
+        }
+      }
+    },
+    "ShoppingList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startDay": {
+          "type": "string"
+        },
+        "endDay": {
+          "type": "string"
+        },
+        "account": {
+          "$ref": "#/definitions/Account"
+        },
+        "purchasedFoodsIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "foods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnShoppingList"
+          }
+        }
+      }
+    },
+    "FoodsOnShoppingList": {
+      "type": "object",
+      "properties": {
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "shoppingList": {
+          "$ref": "#/definitions/ShoppingList"
+        },
+        "puchased": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "FoodsOnStoreLocations": {
+      "type": "object",
+      "properties": {
+        "food": {
+          "$ref": "#/definitions/Food"
+        },
+        "storeLocation": {
+          "$ref": "#/definitions/StoreLocation"
         }
       }
     },
@@ -175,18 +294,6 @@
             "null"
           ]
         },
-        "foodsOnDays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FoodsOnDays"
-          }
-        },
-        "recipesOnDays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/RecipesOnDays"
-          }
-        },
         "mealsOnDays": {
           "type": "array",
           "items": {
@@ -211,41 +318,24 @@
             "null"
           ]
         },
+        "calories": {
+          "type": "number",
+          "default": 0
+        },
+        "protein": {
+          "type": "number",
+          "default": 0
+        },
+        "carbohydrates": {
+          "type": "number",
+          "default": 0
+        },
+        "fat": {
+          "type": "number",
+          "default": 0
+        },
         "account": {
           "$ref": "#/definitions/Account"
-        }
-      }
-    },
-    "FoodsOnDays": {
-      "type": "object",
-      "properties": {
-        "food": {
-          "$ref": "#/definitions/Food"
-        },
-        "day": {
-          "$ref": "#/definitions/Day"
-        },
-        "scale": {
-          "type": "number",
-          "default": 1
-        },
-        "foodUnit": {
-          "$ref": "#/definitions/FoodUnit"
-        }
-      }
-    },
-    "RecipesOnDays": {
-      "type": "object",
-      "properties": {
-        "recipe": {
-          "$ref": "#/definitions/Recipe"
-        },
-        "day": {
-          "$ref": "#/definitions/Day"
-        },
-        "scale": {
-          "type": "number",
-          "default": 1
         }
       }
     },
@@ -338,19 +428,52 @@
         "meal": {
           "$ref": "#/definitions/Meal"
         },
-        "scale": {
+        "scaleBase": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleNumerator": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleDenominator": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleDecimal": {
           "type": "number",
           "default": 1
         },
+        "shouldUseScaleDecimal": {
+          "type": "boolean",
+          "default": false
+        },
+        "halves": {
+          "type": "boolean",
+          "default": false
+        },
+        "thirds": {
+          "type": "boolean",
+          "default": false
+        },
+        "fourths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixths": {
+          "type": "boolean",
+          "default": false
+        },
+        "eighths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixteenths": {
+          "type": "boolean",
+          "default": false
+        },
         "foodUnit": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/FoodUnit"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/FoodUnit"
         }
       }
     },
@@ -385,12 +508,6 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/RecipesOnMeals"
-          }
-        },
-        "recipesOnDays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/RecipesOnDays"
           }
         },
         "batchRecipe": {
@@ -448,18 +565,75 @@
         "recipe": {
           "$ref": "#/definitions/Recipe"
         },
-        "scale": {
-          "type": "number",
-          "default": 1
-        },
         "note": {
           "type": [
             "string",
             "null"
           ]
         },
+        "scaleBase": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleNumerator": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleDenominator": {
+          "type": "integer",
+          "default": 1
+        },
+        "scaleDecimal": {
+          "type": "number",
+          "default": 1
+        },
+        "shouldUseScaleDecimal": {
+          "type": "boolean",
+          "default": false
+        },
+        "halves": {
+          "type": "boolean",
+          "default": false
+        },
+        "thirds": {
+          "type": "boolean",
+          "default": false
+        },
+        "fourths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixths": {
+          "type": "boolean",
+          "default": false
+        },
+        "eighths": {
+          "type": "boolean",
+          "default": false
+        },
+        "sixteenths": {
+          "type": "boolean",
+          "default": false
+        },
         "foodUnit": {
           "$ref": "#/definitions/FoodUnit"
+        }
+      }
+    },
+    "FoodBrand": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "foods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Food"
+          }
         }
       }
     },
@@ -476,9 +650,15 @@
         "name": {
           "type": "string"
         },
-        "gramWeight": {
+        "baseUnitAmount": {
           "type": [
             "number",
+            "null"
+          ]
+        },
+        "baseUnit": {
+          "type": [
+            "string",
             "null"
           ]
         },
@@ -488,16 +668,20 @@
             "null"
           ]
         },
-        "usdaDataType": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "fdcId": {
           "type": [
             "integer",
             "null"
+          ]
+        },
+        "foodBrand": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FoodBrand"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "foodCategory": {
@@ -534,10 +718,16 @@
             "$ref": "#/definitions/FoodsOnMeals"
           }
         },
-        "days": {
+        "shoppingLists": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/FoodsOnDays"
+            "$ref": "#/definitions/FoodsOnShoppingList"
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FoodsOnStoreLocations"
           }
         },
         "account": {
@@ -599,10 +789,10 @@
           "type": "boolean",
           "default": false
         },
-        "unitToGramRatio": {
+        "baseUnitAmountRatio": {
           "type": "number"
         },
-        "gramWeight": {
+        "foodUnitAmount": {
           "type": "number"
         },
         "food": {
@@ -618,12 +808,6 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/FoodsOnMeals"
-          }
-        },
-        "foodsOnDays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FoodsOnDays"
           }
         },
         "Unit": {
@@ -751,6 +935,21 @@
     "account": {
       "$ref": "#/definitions/Account"
     },
+    "store": {
+      "$ref": "#/definitions/Store"
+    },
+    "storeLocation": {
+      "$ref": "#/definitions/StoreLocation"
+    },
+    "shoppingList": {
+      "$ref": "#/definitions/ShoppingList"
+    },
+    "foodsOnShoppingList": {
+      "$ref": "#/definitions/FoodsOnShoppingList"
+    },
+    "foodsOnStoreLocations": {
+      "$ref": "#/definitions/FoodsOnStoreLocations"
+    },
     "mealTemplate": {
       "$ref": "#/definitions/MealTemplate"
     },
@@ -759,12 +958,6 @@
     },
     "day": {
       "$ref": "#/definitions/Day"
-    },
-    "foodsOnDays": {
-      "$ref": "#/definitions/FoodsOnDays"
-    },
-    "recipesOnDays": {
-      "$ref": "#/definitions/RecipesOnDays"
     },
     "mealsOnDays": {
       "$ref": "#/definitions/MealsOnDays"
@@ -783,6 +976,9 @@
     },
     "foodsOnRecipes": {
       "$ref": "#/definitions/FoodsOnRecipes"
+    },
+    "foodBrand": {
+      "$ref": "#/definitions/FoodBrand"
     },
     "food": {
       "$ref": "#/definitions/Food"

@@ -1,0 +1,108 @@
+<div class="pb-96" *appBe="state.select() | async as vm">
+  <h1 class="text-5xl font-bold text-gray-800 mb-5">Create food</h1>
+
+  <div class="grid grid-cols-12 gap-8">
+    <form (ngSubmit)="onSubmit$.next()" [formGroup]="form" class="w-full col-span-7 relative">
+      <div>
+        <app-text-input formCtrlName="name" label="Name"></app-text-input>
+
+        <app-select-input
+          label="Category"
+          formCtrlName="category"
+          *ngIf="vm?.categoryOptions as options"
+          [options]="options"
+        ></app-select-input>
+
+        <div class="grid [grid-template-columns:min-content_5fr] gap-x-3">
+          <ng-container *ngFor="let nutrient of primaryNutrientControls">
+            <label for="{{nutrient.label}}" class="pt-2 text-right text-gray-600 flex gap-1 justify-end">
+              <span *ngIf="nutrient.required" class="text-orange-500 text-sm">*</span>{{ nutrient.label }}
+            </label>
+            <app-number-input
+              [showLabel]="false"
+              formCtrlName="{{ nutrient.formControlName }}"
+              label="{{ nutrient.label }}"
+              postfixLabel="{{ nutrient.postfixLabel }}"
+            ></app-number-input>
+          </ng-container>
+        </div>
+
+        <div class="flex gap-3">
+          <app-number-input
+            label="Serving amount"
+            formCtrlName="servingUnitAmount"
+          ></app-number-input>
+          <app-autocomplete-input
+            label="Serving unit name"
+            formCtrlName="servingUnitName"
+            placeholder="serving"
+            postfixLabel="="
+            [autocompleteOptions]="[{ label: 'cup', value: 'cup' }]"
+          ></app-autocomplete-input>
+          <app-number-input
+            label="Weight"
+            formCtrlName="gramWeight"
+            postfixLabel="g"
+          ></app-number-input>
+        </div>
+
+        <ng-container *ngIf="vm?.gramWeightHasValue; else foodUnitsMessage">
+          <div class="flex gap-3 items-center" *ngFor="let foodUnit of vm?.foodUnits; index as i; trackBy: foodUnitTrackBy">
+            <app-number-input
+              label="Serving amount"
+              formCtrlName="foodUnits.{{i}}.servingUnitAmount"
+            ></app-number-input>
+            <app-autocomplete-input
+              label="Serving unit name"
+              formCtrlName="foodUnits.{{i}}.servingUnitName"
+              placeholder="serving"
+              postfixLabel="="
+              [autocompleteOptions]="[{ label: 'cup', value: 'cup' }]"
+            ></app-autocomplete-input>
+            <app-number-input
+              label="Weight"
+              formCtrlName="foodUnits.{{i}}.gramWeight"
+              postfixLabel="g"
+            ></app-number-input>
+            <button
+              (click)="onFoodUnitRemove$.next(i)"
+              title="Delete serving unit"
+              class="bg-red-200 text-red-700 block rounded-full px-3 py-0 pb-1 text-bold text-3xl active:bg-red-300 transition-all active:scale-95"
+              type="button"
+            >-</button>
+          </div>
+          <button
+            (click)="onFoodUnitAdd$.next()"
+            title="Add serving unit"
+            class="bg-green-200 text-green-700 block rounded-full px-4 py-2 text-bold text-sm active:bg-green-300 transition-all active:scale-95"
+            type="button"
+          >Add another serving unit</button>
+        </ng-container>
+
+        <ng-template #foodUnitsMessage>
+          <p class="text-sm text-gray-500">To add more serving units, enter the gram weight amount for the first serving unit</p>
+        </ng-template>
+      </div>
+
+      <div class="p-3 flex pt-7">
+        <app-submit-button></app-submit-button>
+      </div>
+    </form>
+
+    <div class="col-span-5">
+      <div *ngIf="vm?.queried?.length">
+        <p class="text-lg text-bold pb-3">Similar existing foods:</p>
+        <div class="flex flex-col gap-3">
+        <a
+          *ngFor="let food of vm?.queried ?? []"
+          routerLink="/food/{{ food.id }}"
+          class="block text-sm text-blue-500 hover:underline"
+        >
+          {{ food.name }}
+        </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

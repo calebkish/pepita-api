@@ -1,27 +1,27 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["referentialIntegrity", "interactiveTransactions", "postgresqlExtensions"]
+  previewFeatures = ["postgresqlExtensions"]
   binaryTargets = ["debian-openssl-3.0.x", "native"]
 }
 
 datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
-  referentialIntegrity = "foreignKeys"
+  relationMode = "foreignKeys"
   extensions = [pg_trgm, pgcrypto, uuidOssp(map: "uuid-ossp")]
 }
 
-generator jsonSchema {
-  provider = "prisma-json-schema-generator"
-}
-
 model Account {
-  id              String   @id @default(uuid())
-  created         DateTime @default(now())
-  email           String   @unique
-  passwordHash    String
-  isEmailVerified Boolean  @default(false)
-  role            Role     @default(USER)
+  id String @id @default(uuid())
+  created DateTime @default(now())
+  username String @unique
+  passwordHash String
+  role Role @default(USER)
+
+  email String?
+  isEmailVerified Boolean @default(false)
+
+  expirationTimestamp DateTime?
 
   autoCreatedMealTemplates MealTemplate[] @relation("AutoCreatedMealTemplates")
 
@@ -65,6 +65,7 @@ model Account {
 }
 
 enum Role {
+  TRIAL
   USER
   ADMIN
 }
@@ -325,6 +326,7 @@ model Food {
 
   foodBrand FoodBrand? @relation(fields: [foodBrandId], references: [id], onDelete: SetNull)
   foodBrandId String?
+  gtinUpc String?
 
   foodCategory FoodCategory? @relation(fields: [foodCategoryId], references: [id], onDelete: Restrict)
   foodCategoryId String?
@@ -334,6 +336,7 @@ model Food {
 
   recipes FoodsOnRecipes[]
   meals FoodsOnMeals[]
+
 
   shoppingLists FoodsOnShoppingList[]
   locations FoodsOnStoreLocations[]

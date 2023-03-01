@@ -8,23 +8,26 @@ import { Account } from '@prisma/client';
 import { isValid } from '../middleware/is-valid.js';
 import { isNumber } from '../validators/is-number.js';
 import { notEmpty } from '../validators/not-empty.js';
+import { generatePhrase } from '../util/words.js';
 
 const authRouter = express.Router();
 
 authRouter.post(
   '/register',
-  body('email').trim().isEmail().withMessage('The value you entered is not an email'),
-  body('password').trim().isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
+  body('username').trim().notEmpty()
+    .withMessage('Enter a username'),
+  body('password').trim().isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
   body('passwordConfirm').trim()
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
+    .custom((passwordConfirm, { req }) => {
+      if (passwordConfirm !== req.body.password) {
         throw new Error('Password confirmation does not match password');
       }
       return true;
-  }),
+    }),
   isValid,
   async (req, res) => {
-    const email = req.body.email;
+    const username = req.body.username;
     const password = req.body.password;
 
     const saltRounds = 10;
@@ -34,11 +37,15 @@ authRouter.post(
     let account: Account;
     try {
       account = await prismaClient.account.create({
-        data: { email, passwordHash },
+        data: {
+          username,
+          passwordHash,
+        },
       });
     } catch (err) {
+      console.error(err);
       return res.status(500).send({
-        errors: { email: 'Provided email can not be used' }
+        errors: { username: 'Provided username can not be used' }
       });
     }
 
@@ -52,35 +59,90 @@ authRouter.post(
     return res
       .status(201)
       .cookie('access_token', token, {
-        httpOnly: false,
-        secure: false,
-        sameSite: 'none',
-        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
       })
       .send({
-        email: account.email,
+        username: account.username,
         role: account.role,
       });
   },
 );
 
 authRouter.post(
+  '/trial-register',
+  async (req, res) => {
+    const phrase = generatePhrase(4);
+    console.log(phrase);
+
+    const username = phrase;
+    const password = phrase;
+
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const expirationTimestamp = (() => {
+      const date = new Date();
+      date.setDate(date.getDate() + 2);
+      return date;
+    })();
+
+    let account: Account;
+    try {
+      account = await prismaClient.account.create({
+        data: {
+          username,
+          passwordHash,
+          role: 'TRIAL',
+          expirationTimestamp,
+        },
+      });
+    } catch (err) {
+      return res.status(500).send({
+        errors: { username: 'Provided username can not be used' }
+      });
+    }
+
+    let token = null;
+    try {
+      token = await createAccountJwt(account);
+    } catch (error) {
+      return res.status(500).send('Failed to sign jwt');
+    }
+
+    return res
+      .status(201)
+      .cookie('access_token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      })
+      .send({
+        username: account.username,
+        role: account.role,
+        expirationTimestamp: account.expirationTimestamp,
+      });
+  },
+);
+
+authRouter.post(
   '/login',
-  body('email').trim().notEmpty().withMessage('Email is required'),
-  body('email').trim().isEmail().withMessage('The value you entered is not an email'),
+  body('username').trim().notEmpty().withMessage('Username is required'),
   body('password').trim().notEmpty().withMessage('Password is required'),
   isValid,
   async (req, res) => {
-    const email = req.body.email;
+    const username = req.body.username;
     const password = req.body.password;
 
     const account = await prismaClient.account.findUnique({
-      where: { email },
+      where: { username },
     });
 
     if (account === null) {
       return res.status(400).send({
-        errors: { email: 'Provided email is not valid' }
+        errors: { username: 'Provided username is not valid' }
       });
     };
 
@@ -106,13 +168,28 @@ authRouter.post(
       .status(200)
       .cookie('access_token', token, {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'strict',
       })
       .send({
-        email: account.email,
+        username: account.username,
         role: account.role,
       });
+  },
+);
+
+authRouter.post(
+  '/logout',
+  isAuthorized,
+  async (req, res) => {
+    return res
+      .clearCookie('access_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      })
+      .status(200)
+      .send({ status: 'success' });
   },
 );
 
@@ -120,7 +197,7 @@ authRouter.get(
   '/current',
   isAuthorized,
   async (req, res) => {
-    const { email, accountId } = res.locals;
+    const { accountId } = res.locals;
 
     const account = await prismaClient.account.findUnique({
       where: { id: accountId },
@@ -130,7 +207,13 @@ authRouter.get(
     });
 
     if (account === null) {
-      return res.sendStatus(500);
+      return res
+        .clearCookie('access_token', {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+        })
+        .sendStatus(500);
     }
 
     return res.status(200).send(account);
@@ -141,7 +224,7 @@ authRouter.get(
   '/settings',
   isAuthorized,
   async (req, res) => {
-    const { email, accountId } = res.locals;
+    const { accountId } = res.locals;
 
     const account = await prismaClient.account.findUnique({
       where: { id: accountId },

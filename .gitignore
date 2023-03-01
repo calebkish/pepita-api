@@ -1,7 +1,6 @@
 dist
-.env
 node_modules
+import/data
 
-src/import/data
-
+.env
 .env-prod

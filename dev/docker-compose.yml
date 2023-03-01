@@ -1,10 +1,10 @@
-version: "3.8"
+version: "3.9"
 
 services:
   postgres:
     build: ./postgres/
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       cool-network:
     environment:
@@ -21,7 +21,7 @@ services:
     networks:
       cool-network:
     ports:
-      - "8080:8080"
+      - "8081:8080"
 
 volumes:
   pg_data: {}

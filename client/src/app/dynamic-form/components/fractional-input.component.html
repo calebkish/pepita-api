@@ -1,0 +1,89 @@
+<div class="relative pb-6 flex flex-col items-start" *appBe="state.select() | async as vm" [formGroup]="form">
+  <label
+    *ngIf="label && showLabel"
+    for="{{ label }}"
+    class="text-sm text-gray-600 mb-1"
+  >
+    {{ label }} <span class="text-orange-500" *ngIf="vm?.required">*</span>
+  </label>
+
+  <div class="w-full flex items-center">
+    <div class="flex w-full" *ngIf="vm?.shouldUseScaleDecimal; else fractional">
+      <input
+        #baseInput
+        formControlName="scaleDecimal"
+        type="number"
+        id="{{ label }}"
+        class="bg-white border-2 rounded-l-md px-3 py-5 h-8 w-full text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500"
+        (focus)="state.set({ focused: true })"
+        (blur)="state.set({ focused: false })"
+        [ngClass]="{
+          'border-red-500 focus:outline-red-200 focus:outline-4': vm?.error,
+          'bg-slate-300 [cursor:not-allowed]': vm?.disabled
+        }"
+      />
+    </div>
+
+    <ng-template #fractional>
+      <div
+        class="flex w-full"
+      >
+        <input
+          #decimalInput
+          type="number"
+          id="{{ label }}"
+          class="bg-white px-3 py-5 h-8 w-full text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500 rounded-l-md border-2"
+          formControlName="scaleBase"
+          (focus)="state.set({ focused: true })"
+          (blur)="state.set({ focused: false })"
+          [ngClass]="{
+            'border-red-500 focus:outline-red-200 focus:outline-4': vm?.error,
+            'bg-slate-300 [cursor:not-allowed]': vm?.disabled
+          }"
+        />
+        <select
+          formControlName="fraction"
+          *ngIf="(vm?.fractionOptions?.length ?? 0) > 1"
+          class="bg-white border-t-2 border-b-2 pl-1"
+          [compareWith]="compareWithFractionOption"
+          [ngClass]="{
+            'bg-slate-300 [cursor:not-allowed]': vm?.disabled
+          }"
+        >
+          <option *ngFor="let option of vm?.fractionOptions ?? []; trackBy: trackByFractionOption" [ngValue]="option">
+            <ng-container *ngIf="option.scaleNumerator === 0; else normalFraction"></ng-container>
+            <ng-template #normalFraction>{{option.scaleNumerator}} / {{option.scaleDenominator}}</ng-template>
+          </option>
+        </select>
+      </div>
+    </ng-template>
+
+    <button
+      #btn
+      type="button"
+      class="text-slate-800 p-2 [background:#e5e7eb] rounded-r-md [height:44px] active:bg-slate-200 transition-all active:scale-95 flex items-center"
+      cdkOverlayOrigin
+      #trigger="cdkOverlayOrigin"
+      [disabled]="vm?.disabled || disableScaleChanging"
+      [ngClass]="{
+        'bg-slate-300 [cursor:not-allowed]': vm?.disabled || disableScaleChanging
+      }"
+    >
+      <span class="material-symbols-outlined mt-1">scale</span>
+    </button>
+    <app-fractional-steps-overlay
+      [parent]="form"
+      [overlayOrigin]="trigger"
+      (escapeKeydown)="btn.focus()"
+    />
+  </div>
+
+  <p
+    *ngIf="vm?.error as error"
+    class="text-red-500 absolute -bottom-0 left-0 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-full z-10 hover:[box-shadow:10px_0_5px_inherit] hover:max-w-none hover:inherit hover:z-10"
+    [ngClass]="{ '[box-shadow:10px_0_5px_inherit] max-w-none inherit z-10': vm?.focused }"
+  >
+    {{ error }}
+  </p>
+
+</div>

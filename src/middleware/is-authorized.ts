@@ -11,7 +11,7 @@ export const isAuthorized = (req: express.Request, res: express.Response, next: 
   }
   try {
     const payload = jsonwebtoken.verify(token, accountJwtSecret) as JwtPayload;
-    res.locals.accountEmail = payload.email;
+    res.locals.accountUsername = payload.username;
     res.locals.accountId = payload.id;
     res.locals.accountRole = payload.role;
     next();

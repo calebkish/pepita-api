@@ -1,0 +1,105 @@
+<div
+  *appBe="state.select() | async as vm"
+  class="flex flex-col h-full max-w-lg mx-auto gap-3 p-5"
+>
+
+  <div class="flex flex-col gap-5">
+
+    <!-- Nutrients -->
+    <div class="flex flex-col gap-3 sticky top-0 bg-white p-2 z-10 border-slate-100 border-b-2">
+      <div class="flex justify-between">
+        <div *ngFor="let nutrient of vm?.nutrients" class="flex flex-col gap-2 items-center">
+          <div class="text-xs text-slate-800">
+            {{nutrientNames[nutrient.name]}}
+            <span class="text-slate-500">({{nutrient.unit}})</span>
+          </div>
+          <div class="text-sm font-bold">{{nutrient.amount | number:'1.0-0' }}</div>
+        </div>
+
+      </div>
+
+      <div
+        *ngIf="vm?.clipboard"
+        class="bg-cyan-100 text-cyan-800 p-2 text-sm rounded-md flex justify-between items-center sticky top-0"
+      >
+        <div *ngIf="vm?.clipboard?.foodOnMeal">
+          <p>{{ vm?.clipboard?.foodOnMeal?.food?.name }}</p>
+        </div>
+        <div *ngIf="vm?.clipboard?.recipeOnMeal">
+          <p>{{ vm?.clipboard?.recipeOnMeal?.recipe?.name }}</p>
+        </div>
+        <button type="button" (click)="onClipboardClear$.next()" class="flex gap-1 items-center text-cyan-700 hover:bg-cyan-200 rounded-md p-1">
+          <span class="material-symbols-outlined text-sm">cancel</span>
+          <p class="text-xs">Clear clipboard</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Day controls -->
+    <div class="flex gap-3 justify-center items-center">
+      <button
+          (click)="onDayMutate$.next({ offset: -1 })"
+          title="Previous day"
+          class="bg-slate-200 text-slate-700 block rounded-full w-9 h-9 text-bold text-sm active:bg-slate-300 transition-all active:scale-95"
+          type="button"
+        >
+        <span class="material-symbols-outlined relative top-1">chevron_left</span>
+      </button>
+      <div>
+        <input
+          #dateDirective="dpDayPicker"
+          class="bg-white border-2 rounded-md w-28 h-full text-center text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500"
+          name="someName"
+          [formControl]="dayControl"
+          [dpDayPicker]="config"
+          theme="dp-material dp-main"
+        >
+      </div>
+        <button
+          (click)="onDayMutate$.next({ offset: 1 })"
+          title="Next day"
+          class="bg-slate-200 text-slate-700 block rounded-full w-9 h-9 text-bold text-sm active:bg-slate-300 transition-all active:scale-95"
+          type="button"
+        >
+          <span class="material-symbols-outlined relative top-1">chevron_right</span>
+        </button>
+    </div>
+
+    <!-- Meals -->
+    <div class="flex flex-col gap-3">
+      <div
+        *ngIf="vm && vm.dayResponse?.data && vm.dayResponse?.data?.mealsOnDays?.length"
+        class="flex flex-col gap-8"
+      >
+        <app-meal
+          *ngFor="let mealOnDay of vm?.dayResponse?.data?.mealsOnDays ?? []; trackBy: trackByMeal"
+          [mealOnDay]="mealOnDay"
+          [day]="vm.day"
+        />
+      </div>
+
+      <div class="flex gap-3">
+        <button
+          (click)="onAddMealToDay$.next()"
+          class="bg-slate-200 text-slate-700 block rounded-full px-4 py-2 text-bold text-sm active:bg-slate-300 transition-all active:scale-95"
+          type="button"
+        >
+          Add meal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- <button type="button" (click)="onTodayClick()">Go to today</button> -->
+  <!-- <div class="flex flex-col gap-3 max-h-64 overflow-y-auto"> -->
+  <!--   <ng-container *ngFor="let day of vm?.days ?? []"> -->
+  <!--     <div *ngIf="day.isToday" class="bg-green-200 [min-height:8rem]" id="today"> -->
+  <!--       {{day.day}} -->
+  <!--     </div> -->
+  <!--     <div *ngIf="!day.isToday" class="bg-slate-200 [min-height:8rem]"> -->
+  <!--       {{day.day}} -->
+  <!--     </div> -->
+  <!--   </ng-container> -->
+  <!-- </div> -->
+
+</div>

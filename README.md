@@ -159,14 +159,38 @@ TRUNCATE TABLE "FoodBrand" CASCADE;
 TRUNCATE TABLE "Food" CASCADE;
 TRUNCATE TABLE "NutrientsOnFoods" CASCADE;
 TRUNCATE TABLE "FoodUnit" CASCADE;
-\copy "FoodCategory" from 'food-category.csv' CSV HEADER
-\copy "FoodBrand" from 'food-brand.csv' CSV HEADER
-\copy "Food" from 'food.csv' CSV HEADER
-\copy "NutrientsOnFoods" from 'food-nutrient.csv' CSV HEADER
-\copy "FoodUnit" from 'food-unit.csv' CSV HEADER
+\copy "FoodCategory" from 'food-category.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "FoodBrand" from 'food-brand.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "Food" from 'food.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "NutrientsOnFoods" from 'food-nutrient.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "FoodUnit" from 'food-unit.csv' WITH (FORMAT CSV, HEADER MATCH)
 EOSQL
 ```
 
 
+As an alternative, copy from STDIN:
+`psql -d '' -c 'COPY "Food" FROM STDIN WITH (FORMAT CSV, HEADER MATCH)' < food.csv`
 
 
+# Fly.io
+
+```bash
+fly launch
+# Chicago
+# Choose to create postgres database:
+    # Cluster size: 1
+    # VM size: shared-cpu-1x - 256
+    # Volume size: 3
+
+# Reseting
+fly secrets unset DATABASE_URL
+
+fly pg create --volume-size 3 --region ord --initial-cluster-size 1
+# fly vol extend <id> -s <number_of_gb>
+fly pg attach --app pepita pepita-db
+fly proxy 5432 -a pepita-db
+npx prisma db push
+npm run import-branded
+cd import/data/branded/postgres-copy
+psql -d "postgres://pepita:PASSWORD@localhost:5432/pepita"
+```

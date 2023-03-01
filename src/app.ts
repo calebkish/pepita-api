@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import express from 'express';
 import authRouter from './routers/auth.js';
 import cookieParser from 'cookie-parser';
@@ -14,6 +16,8 @@ import foodInstanceRouter from './routers/food-instance.js';
 import recipeInstanceRouter from './routers/recipe-instance.js';
 import storeRouter from './routers/store.js';
 import shoppingListRouter from './routers/shopping-list.js';
+
+console.log('db url:', process.env['DATABASE_URL']);
 
 const app = express();
 
@@ -62,7 +66,17 @@ app.use('/recipe-instance', recipeInstanceRouter);
 app.use('/store', storeRouter);
 app.use('/shopping-list', shoppingListRouter);
 
-const port = 3000;
+// Server static assets if in production
+// if (process.env.NODE_ENV === 'production') {
+  // Set static folder
+  app.use(express.static('client/dist/pepita'));
+
+  app.get('/*', (req, res) => {
+    res.sendFile(path.resolve('client', 'dist', 'pepita', 'index.html'));
+  });
+// }
+
+const port = process.env.PORT ?? 8080;
 
 app.listen(port)
   .on('listening', () => console.log(`Listeneing on port ${port}`));

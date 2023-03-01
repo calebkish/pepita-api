@@ -5,7 +5,7 @@ import { accountJwtSecret } from '../keys.js';
 export async function createAccountJwt(account: Account): Promise<string> {
   const payload = {
     id: account.id,
-    email: account.email,
+    username: account.username,
     role: account.role,
   };
 

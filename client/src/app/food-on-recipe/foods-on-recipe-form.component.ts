@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FoodOnRecipeCtrl, FoodOnRecipeInputComponent } from "./food-on-recipe-input.component";
-import { map, Subject, tap } from 'rxjs';
+import { distinctUntilChanged, map, Subject, tap } from 'rxjs';
 import { RxState } from '@rx-angular/state';
 import { RxEffects } from '@rx-angular/state/effects';
 import { FormArray, FormGroup, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -18,7 +18,7 @@ import { Dialog, DialogModule } from '@angular/cdk/dialog';
     template: `
 <div *appBe="state.select() | async as vm" class="flex flex-col gap-3">
 
-  <div *ngIf="!disableCreateDelete">
+  <div *ngIf="!disableCreateDelete" class="pb-3">
     <button
       #btn
       type="button"
@@ -34,7 +34,7 @@ import { Dialog, DialogModule } from '@angular/cdk/dialog';
     Search for ingredients to add from above.
   </p>
 
-  <div *ngFor="let foodVm of vm?.foodControls ?? []; index as i; trackBy: trackByIndex" class="flex gap-3 items-center">
+  <div *ngFor="let foodVm of vm?.foodControls ?? []; index as i; trackBy: trackByIndex" class="flex gap-5 items-center">
     <app-food-on-recipe-inputs
       [parent]="foodVm"
       [showScaledToRecipe]="showScaledToRecipe"
@@ -67,8 +67,6 @@ export class FoodOnRecipeFormComponent implements OnInit {
   onAddBtnClick$ = new Subject<void>();
 
   trackByIndex = trackByIndex;
-
-  // searchParts: Array<keyof SearchResponse> = ['foods'];
 
   @Input() parent!: FormGroup;
   @Input() showScaledToRecipe = false;
@@ -109,6 +107,8 @@ export class FoodOnRecipeFormComponent implements OnInit {
     });
 
     this.state.connect('foodControls', rawValueChanges(foodsFormArray, true).pipe(
+      map(() => foodsFormArray.length),
+      distinctUntilChanged(),
       map(() => foodsFormArray.controls),
     ));
   }

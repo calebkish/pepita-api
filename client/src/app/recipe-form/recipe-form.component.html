@@ -1,61 +1,56 @@
-<div *appBe="state.select() | async as vm" class="p-5">
+<div *appBe="state.select() | async as vm" class="max-w-lg mx-auto p-5 pt-0">
 
-  <div class="grid grid-cols-12 gap-8">
-    <div class="w-full col-span-7 relative pb-96">
+  <div class="flex flex-col gap-3 sticky top-0 bg-white p-2 z-10 border-slate-100 border-b-2 mb-5">
+    <app-core-nutrients [nutrients]="vm?.recipeNutrients ?? []" />
+  </div>
 
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-5">
-          {{ vm?.formMode === 'create' ? 'Create recipe': 'Edit recipe' }}
-        </h1>
+  <div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold text-gray-800 mb-5">
+      {{ vm?.formMode === 'create' ? 'Create recipe': 'Edit recipe' }}
+    </h1>
 
-        <button
-          *ngIf="vm?.formMode === 'edit'"
-          (click)="onDeleteRecipe$.next()"
-          title="Add serving unit"
-          class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
-          type="button"
-        >
-          <span class="material-symbols-outlined">delete</span>
-          Delete recipe
-        </button>
+    <button
+      *ngIf="vm?.formMode === 'edit'"
+      (click)="onDeleteRecipe$.next()"
+      title="Add serving unit"
+      class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
+      type="button"
+    >
+      <span class="material-symbols-outlined">delete</span>
+      Delete recipe
+    </button>
+  </div>
+
+  <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
+    <div class="flex flex-col gap-3">
+      <app-text-input label="Name" formCtrlName="name" />
+
+      <app-number-input
+        label="Cooked recipe weight"
+        formCtrlName="gramWeight"
+        postfixLabel="g"
+      />
+
+      <div class="flex flex-col gap-3">
+        <p class="text-2xl font-bold text-slate-700">Ingredients</p>
+        <div class="">
+          <app-foods-on-recipe-form [parent]="form" />
+        </div>
       </div>
 
-      <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
-        <div class="flex flex-col gap-3">
-          <app-text-input label="Name" formCtrlName="name" />
+      <hr class="border-slate-400 w-full h-full pb-4">
 
-          <div class="flex flex-col gap-3 pb-10">
-            <p class="text-2xl font-bold text-slate-700">Ingredients</p>
-            <div class="pl-4">
-              <app-foods-on-recipe-form [parent]="form" />
-            </div>
-          </div>
-
-          <app-number-input
-            label="Cooked recipe weight"
-            formCtrlName="gramWeight"
-            postfixLabel="g"
-          ></app-number-input>
-
-          <div class="flex flex-col gap-3 pb-7">
-            <p class="text-2xl font-bold text-slate-700">Directions</p>
-            <div class="pl-4">
-              <app-recipe-directions [parent]="form" />
-            </div>
-          </div>
-
+      <div class="flex flex-col gap-3 pb-7">
+        <p class="text-2xl font-bold text-slate-700">Directions</p>
+        <div>
+          <app-recipe-directions [parent]="form" />
         </div>
-
-        <div class="flex">
-          <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
-        </div>
-
-      </form>
+      </div>
     </div>
 
-    <div class="col-span-5">
-      <app-nutrients *ngIf="vm?.recipeNutrients as nutrients" [nutrients]="nutrients" />
+    <div class="flex">
+      <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
     </div>
+  </form>
 
-  </div>
 </div>

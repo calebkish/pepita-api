@@ -62,8 +62,8 @@ export type AddMealDialogResult = 'success' | 'fail';
       label="Name"
       [showLabel]="false"
       placeholder="Meal name"
-    ></app-text-input>
-    <app-submit-button label="Create"></app-submit-button>
+    />
+    <app-submit-button label="Create" />
   </form>
 </div>
   `,

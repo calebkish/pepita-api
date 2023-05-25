@@ -5,3 +5,4 @@ export function resolveFractional(value: FractionalValue): number {
     ? value.scaleDecimal
     : value.scaleBase + (value.scaleNumerator / value.scaleDenominator);
 }
+

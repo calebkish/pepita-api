@@ -29,23 +29,26 @@ import { getFoodOnRecipeNutrients } from '../food-on-recipe/util/get-food-on-rec
 import { FractionalInputComponent } from '../dynamic-form/components/fractional-input.component';
 import { foodOnRecipeDtoToVm } from '../food-on-recipe/util/food-on-recipe-dto-to-vm';
 import { foodOnRecipeVmToPutDto } from '../food-on-recipe/util/food-on-recipe-vm-to-dto';
+import { CoreNutrientsComponent } from "../nutrients/core-nutrients.component";
+import { aggregateNutrients } from '../nutrients/util/aggregate-nutrients';
 
 type RecipeFormMode = 'create' | 'edit';
 
 @Component({
-    selector: 'app-recipe-create',
-    standalone: true,
-    providers: [RxState, RxEffects],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    templateUrl: './recipe-form.component.html',
-    imports: [
-      CommonModule, ReactiveFormsModule, TextInputComponent,
-      SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
-      RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
-      FoodOnRecipeInputComponent, TextAreaInputComponent,
-      FoodOnRecipeFormComponent, RecipeDirectionsComponent,
-      NutrientsComponent, FractionalInputComponent,
-    ]
+  selector: 'app-recipe-create',
+  standalone: true,
+  providers: [RxState, RxEffects],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './recipe-form.component.html',
+  imports: [
+    CommonModule, ReactiveFormsModule, TextInputComponent,
+    SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
+    RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
+    FoodOnRecipeInputComponent, TextAreaInputComponent,
+    FoodOnRecipeFormComponent, RecipeDirectionsComponent,
+    NutrientsComponent, FractionalInputComponent,
+    CoreNutrientsComponent
+  ],
 })
 export class RecipeFormComponent {
   fb = inject(NonNullableFormBuilder);
@@ -74,7 +77,7 @@ export class RecipeFormComponent {
   }>({
     name: this.fb.control<Recipe['name']>('', [requiredValidator]),
     gramWeight: this.fb.control<Recipe['gramWeight'] | null>(null, [isPositiveNumberValidator]),
-  }, { updateOn: 'blur' });
+  });
 
   constructor() {
     this.state.connect('formMode', this.activatedRoute.url, (_, urlSegments) => {
@@ -114,11 +117,12 @@ export class RecipeFormComponent {
             }
             if (res.data) {
               if (formMode === 'create') {
-                this.toastService.open({ message: `New recipe "${res.data?.name}" created` });
+                // this.toastService.open({ message: `New recipe "${res.data?.name}" created` });
                 this.router.navigate(['recipes']);
                 return;
               } else if (formMode === 'edit') {
-                this.toastService.open({ message: `Recipe "${res.data?.name}" changes saved` });
+                // this.toastService.open({ message: `Recipe "${res.data?.name}" changes saved` });
+                this.router.navigate(['recipes']);
                 return;
               }
             }
@@ -134,7 +138,7 @@ export class RecipeFormComponent {
           wrap(),
           tap(res => {
             if (res.data) {
-              this.toastService.open({ message: 'Recipe successfully deleted' });
+              // this.toastService.open({ message: 'Recipe successfully deleted' });
               this.router.navigate(['recipes']);
             } else if (res.error) {
               this.toastService.open({ message: 'Failed to delete recipe' });
@@ -151,9 +155,11 @@ export class RecipeFormComponent {
 
     if (foodsFormArray) {
       this.state.connect('recipeNutrients', rawValueChanges(foodsFormArray), (_, foodsControlValues) => {
-        return foodsControlValues
+        const nutrients = foodsControlValues
           .map(f => getFoodOnRecipeNutrients(f))
-          .flat();
+          .flat()
+        const agg = aggregateNutrients(nutrients);
+        return agg;
       });
     }
 

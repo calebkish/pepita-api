@@ -139,10 +139,11 @@ model MealTemplate {
   name String
   order Int
 
-  calories Int
-  protein Int
-  carbohydrates Int
-  fat Int
+  calories Int @default(0) // denormalized
+  protein Int @default(0) // denormalized
+  carbohydrates Int @default(0) // denormalized
+  fat Int @default(0) // denormalized
+  factor Int @default(0)
 
   meals Meal[]
 
@@ -252,6 +253,8 @@ model Recipe {
   id String @id @default(uuid())
   created DateTime @default(now())
   name String
+  @@index([name(ops: raw("gist_trgm_ops(siglen=256)"))], type: Gist)
+
   saved Boolean @default(false)
   scale Decimal @default(1)
 
@@ -316,17 +319,19 @@ model Food {
   id         String   @id @default(uuid())
   created    DateTime @default(now())
   name       String
-  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+
+  indexedName String
+  @@index([indexedName(ops: raw("gist_trgm_ops(siglen=256)"))], type: Gist)
 
   baseUnitAmount Decimal? // what nutrients of the food will be based on; optional
   baseUnit String?    // b/c you might not want to enter weight for custom food
 
   source String?
-  fdcId Int? @unique // Food Data Central ID
+  sourceUniqueId String?
+  sourceImportDate DateTime?
 
   foodBrand FoodBrand? @relation(fields: [foodBrandId], references: [id], onDelete: SetNull)
   foodBrandId String?
-  gtinUpc String?
 
   foodCategory FoodCategory? @relation(fields: [foodCategoryId], references: [id], onDelete: Restrict)
   foodCategoryId String?

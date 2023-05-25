@@ -1,4 +1,4 @@
-import { GlobalPositionStrategy, Overlay } from "@angular/cdk/overlay";
+import { GlobalPositionStrategy, Overlay, OverlayRef } from "@angular/cdk/overlay";
 import { ComponentPortal } from "@angular/cdk/portal";
 import { ComponentRef, inject, Injectable, InjectionToken, Injector } from "@angular/core";
 import { ToastComponent } from "../components/toast.component";
@@ -8,7 +8,10 @@ interface ToastConfig {
   message: string;
 }
 
-export type InjectedToastConfig = ToastConfig & { componentRef: ComponentRef<ToastComponent> }
+export type InjectedToastConfig = ToastConfig & {
+  componentRef: ComponentRef<ToastComponent>,
+  overlayRef: OverlayRef,
+};
 
 export const TOAST_CONFIG = new InjectionToken<InjectedToastConfig>('ToastConfig');
 
@@ -25,7 +28,7 @@ export class ToastService {
     const configToInject: InjectedToastConfig = config ?? {};
 
     const positionStrategy = new GlobalPositionStrategy();
-    positionStrategy.bottom('0');
+    positionStrategy.top('0');
     positionStrategy.centerHorizontally();
     const overlayRef = this.overlay.create({
       positionStrategy,
@@ -51,10 +54,11 @@ export class ToastService {
     this.currentlyOpenComponentRef = componentRef;
 
     configToInject.componentRef = componentRef;
+    configToInject.overlayRef = overlayRef;
 
     setTimeout(() => {
       componentRef.instance.delete();
-    }, (config?.autoDismissSeconds ?? 5) * 1000);
+    }, (config?.autoDismissSeconds ?? 2) * 1000);
   }
 
 }

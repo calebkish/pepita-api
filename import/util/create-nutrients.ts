@@ -26,7 +26,6 @@ export async function createNutrients(): Promise<Nutrient[]> {
       await prismaClient.nutrient.upsert({
         where: {
           id: toUUID(n.fdcNutrientId.toString()),
-          // name: n.name,
         },
         create: {
           id: toUUID(n.fdcNutrientId.toString()),

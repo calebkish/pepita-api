@@ -29,19 +29,18 @@ import { foodOnRecipeDtoToVm } from '../food-on-recipe/util/food-on-recipe-dto-t
 type BatchRecipeFormMode = 'create' | 'edit';
 
 @Component({
-    selector: 'app-batch-recipe-form',
-    standalone: true,
-    templateUrl: './batch-recipe-form.component.html',
-    providers: [RxState, RxEffects],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [
-        CommonModule, ReactiveFormsModule, TextInputComponent,
-        SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
-        RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
-        FoodOnRecipeInputComponent, TextAreaInputComponent,
-        RecipeDirectionsComponent,
-        FoodOnRecipeFormComponent
-    ]
+  selector: 'app-batch-recipe-form',
+  standalone: true,
+  templateUrl: './batch-recipe-form.component.html',
+  providers: [RxState, RxEffects],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    CommonModule, ReactiveFormsModule, TextInputComponent,
+    SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
+    RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
+    FoodOnRecipeInputComponent, TextAreaInputComponent,
+    RecipeDirectionsComponent, FoodOnRecipeFormComponent
+  ]
 })
 export class BatchRecipeFormComponent {
   fb = inject(NonNullableFormBuilder);
@@ -54,6 +53,7 @@ export class BatchRecipeFormComponent {
     postRecipeResponse: Wrapped<Recipe>,
     deleteRecipeResponse: Wrapped<void>,
     formMode: BatchRecipeFormMode,
+    batchRecipes: Recipe[],
   }> = inject(RxState);
 
   // Actions
@@ -108,11 +108,12 @@ export class BatchRecipeFormComponent {
             }
             if (res.data) {
               if (formMode === 'create') {
-                this.toastService.open({ message: `New batch recipe "${res.data?.name}" created` });
+                // this.toastService.open({ message: `New batch recipe "${res.data?.name}" created` });
                 this.router.navigate(['recipes']);
                 return;
               } else if (formMode === 'edit') {
-                this.toastService.open({ message: `Batch recipe "${res.data?.name}" changes saved` });
+                // this.toastService.open({ message: `Batch recipe "${res.data?.name}" changes saved` });
+                this.router.navigate(['recipes']);
                 return;
               }
             }
@@ -128,7 +129,7 @@ export class BatchRecipeFormComponent {
           wrap(),
           tap(res => {
             if (res.data) {
-              this.toastService.open({ message: 'Batch recipe successfully deleted' });
+              // this.toastService.open({ message: 'Batch recipe successfully deleted' });
               this.router.navigate(['recipes']);
             } else if (res.error) {
               this.toastService.open({ message: 'Failed to delete batch recipe' });
@@ -187,6 +188,8 @@ export class BatchRecipeFormComponent {
                 }
               }
             }
+
+            this.state.set({ batchRecipes: recipe.batchRecipes });
 
             // ...then fill controls with real data.
             this.form.patchValue({

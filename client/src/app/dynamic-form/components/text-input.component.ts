@@ -72,6 +72,7 @@ export class TextInputComponent implements OnInit {
   @Input() type: string = 'text';
   @Input() placeholder: string = '';
   @Input() postfixLabel?: string;
+  // @TODO doesn't seem necessary
   @Input() showLabel = true;
   @Input() set customError(customError: string) {
     this.state.set({ customError });

@@ -37,7 +37,7 @@ interface CsvInputFoodNutrient {
 
 // =============================================================================
 
-type CsvOutputFood = Omit<Food, 'created'> & { created: string };
+type CsvOutputFood = Omit<Food, 'created' | 'sourceImportDate'> & { created: string, sourceImportDate: string };
 
 type CsvOutputFoodUnit = Omit<FoodUnit, 'created' | 'servingSizeAmount' | 'baseUnitAmountRatio' | 'foodUnitAmount'> & {
   created: string
@@ -59,6 +59,7 @@ const inputNutrientCsvPath = path.join('import', 'data', 'supporting', 'nutrient
 const nutrientCsv = new Csv<CsvNutrient>(inputNutrientCsvPath);
 
 const createdTimestamp = '2023-02-14 00:00:00.000';
+const sourceImportDate = '2022-10-28 00:00:00.000';
 
 const inputBrandedFoodCsvPath = path.join('import', 'data', 'branded', 'exports', 'latest_branded_food.csv');
 const inputFoodCategoryCsvPath = path.join('import', 'data', 'branded', 'exports', 'branded_food_category.csv');
@@ -155,12 +156,13 @@ async function processBrandedFoodCsv(): Promise<void> {
         name: toTitleCase(fdcFood.description),
         baseUnitAmount: baseUnitAmount as unknown as Food['baseUnitAmount'],
         baseUnit: fdcFood.serving_size_unit,
-        source: 'usda:branded_food',
-        fdcId: Number(fdcFood.fdc_id),
+        source: 'branded_food',
         foodBrandId: normalizeFoodBrand(fdcFood.brand_owner) ? toUUID(fdcFood.brand_owner) : null,
-        gtinUpc: fdcFood.gtin_upc,
         foodCategoryId: foodCategoryId,
         accountId: '',
+        indexedName: normalizeFoodBrand(fdcFood.brand_owner) + ' ' + toTitleCase(fdcFood.description),
+        sourceImportDate,
+        sourceUniqueId: fdcFood.gtin_upc,
       };
 
       return newFood;

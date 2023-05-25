@@ -1,60 +1,66 @@
-<div *appBe="state.select() | async as vm" class="p-5">
+<div *appBe="state.select() | async as vm" class="max-w-lg mx-auto p-5">
 
-  <div class="grid grid-cols-12 gap-8">
-    <div class="w-full col-span-7 relative pb-96">
+  <div class="flex justify-between items-center mb-3">
+    <h1 class="text-xl font-bold text-gray-800">
+      {{ vm?.formMode === 'create' ? 'Create batch recipe': 'Edit batch recipe' }}
+    </h1>
 
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-5">
-          {{ vm?.formMode === 'create' ? 'Create batch recipe': 'Edit batch recipe' }}
-        </h1>
+    <button
+      *ngIf="vm?.formMode === 'edit'"
+      (click)="onDeleteRecipe$.next()"
+      title="Add serving unit"
+      class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
+      type="button"
+    >
+      <span class="material-symbols-outlined">delete</span>
+      Delete batch recipe
+    </button>
+  </div>
 
-        <button
-          *ngIf="vm?.formMode === 'edit'"
-          (click)="onDeleteRecipe$.next()"
-          title="Add serving unit"
-          class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
-          type="button"
-        >
-          <span class="material-symbols-outlined">delete</span>
-          Delete batch recipe
-        </button>
+  <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
+    <div class="flex flex-col gap-3">
+      <app-text-input label="Name" formCtrlName="name" [disabled]="true" />
+
+      <app-number-input
+        label="Cooked batch recipe weight"
+        formCtrlName="gramWeight"
+        postfixLabel="g"
+      />
+
+      <div class="flex flex-col gap-3">
+        <p class="text-2xl font-bold text-slate-700">Ingredients</p>
+
+        <div *ngIf="(vm?.batchRecipes?.length ?? []) > 0" class="bg-yellow-100 text-yellow-900 p-3 flex gap-3 text-sm rounded-lg">
+          <span class="material-symbols-outlined text-3xl text-yellow-700">warning</span>
+          <div class="flex flex-col gap-3">
+            <p>Editing batch recipe ingredient amounts is not allowed when batch recipe instances exist.</p>
+            <p class="font-bold">Batch recipe instances:</p>
+            <ul class="list-disc pl-5">
+              <li *ngFor="let batchRecipe of vm?.batchRecipes ?? []">
+                <a routerLink="/batch-recipe-instances/{{batchRecipe.id}}/edit">{{ batchRecipe.created | date:'medium' }}</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <app-foods-on-recipe-form
+          [parent]="form"
+          [disableBaseInputs]="(vm?.batchRecipes?.length ?? []) > 0"
+          [disableCreateDelete]="(vm?.batchRecipes?.length ?? []) > 0"
+        />
       </div>
 
-      <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
-        <div class="flex flex-col gap-3">
-          <app-text-input label="Name" formCtrlName="name" [disabled]="true" />
+      <hr class="border-slate-400 w-full h-full pb-4">
 
-          <app-number-input
-            label="Cooked batch recipe weight"
-            formCtrlName="gramWeight"
-            postfixLabel="g"
-          />
-
-          <div class="flex flex-col gap-3 pb-10">
-            <p class="text-2xl font-bold text-slate-700">Ingredients</p>
-            <div class="pl-4">
-              <app-foods-on-recipe-form [parent]="form" />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-3 pb-7">
-            <p class="text-2xl font-bold text-slate-700">Directions</p>
-            <div class="pl-4">
-              <app-recipe-directions [readonly]="true" [parent]="form" />
-            </div>
-          </div>
-
-        </div>
-
-        <div class="flex">
-          <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
-        </div>
-
-      </form>
+      <div class="flex flex-col gap-3 pb-7">
+        <p class="text-2xl font-bold text-slate-700">Directions</p>
+        <app-recipe-directions [readonly]="true" [parent]="form" />
+      </div>
     </div>
 
-    <div class="col-span-5">
+    <div class="flex">
+      <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
     </div>
+  </form>
 
-  </div>
 </div>

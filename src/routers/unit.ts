@@ -1,9 +1,6 @@
 import express from 'express';
-import { body, checkSchema, validationResult } from 'express-validator';
 import { prismaClient } from '../db.js';
-import { isAdmin } from '../middleware/is-admin.js';
 import { isAuthorized } from '../middleware/is-authorized.js';
-import { isValid } from '../middleware/is-valid.js';
 
 const unitRouter = express.Router();
 

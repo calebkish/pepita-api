@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject } from 'rxjs';
+import { distinctUntilChanged, map, Subject } from 'rxjs';
 import { RxState } from '@rx-angular/state';
 import { RxEffects } from '@rx-angular/state/effects';
 import { Recipe } from 'src/app/_shared/models/recipe';
@@ -10,6 +10,7 @@ import { TextAreaInputComponent } from '../dynamic-form/components/text-area-inp
 import { trackByIndexValue } from '../_shared/util/track-by-index-value';
 import { rawValueChanges } from '../dynamic-form/util/raw-value-changes';
 import { requiredValidator } from "src/app/dynamic-form/util/has-gram-validator";
+import { TextInputComponent } from "../dynamic-form/components/text-input.component";
 
 export type DirectionCtrl = ReturnType<typeof RecipeDirectionsComponent.createDirectionsControl>;
 
@@ -21,14 +22,14 @@ export type DirectionCtrl = ReturnType<typeof RecipeDirectionsComponent.createDi
 <ng-container [formGroup]="parent" *appBe="state.select() | async as vm">
   <div class="flex flex-col">
     <div *ngFor="let direction of vm?.directions ?? []; index as i; trackBy: trackByIndexValue" class="flex items-start gap-3">
-      <p class="mt-3">{{i+1}}.</p>
+      <!-- <p class="mt-3">{{i+1}}.</p> -->
       <app-text-area-input
         label="Direction"
-        formCtrlName="directions.{{i}}"
+        [ctrl]="direction"
         [showLabel]="false"
         class="w-full"
         [disabled]="!!vm?.readonly"
-      ></app-text-area-input>
+      />
       <button
         *ngIf="!vm?.readonly"
         type="button"
@@ -52,8 +53,8 @@ export type DirectionCtrl = ReturnType<typeof RecipeDirectionsComponent.createDi
 </ng-container>
   `,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [CommonModule, TextAreaInputComponent, ReactiveFormsModule, BeDirective],
     providers: [RxState, RxEffects],
+    imports: [CommonModule, TextAreaInputComponent, ReactiveFormsModule, BeDirective, TextInputComponent]
 })
 export class RecipeDirectionsComponent {
   static createDirectionsControl() {
@@ -65,7 +66,8 @@ export class RecipeDirectionsComponent {
 
   fb = inject(NonNullableFormBuilder);
   state: RxState<{
-    directions: Recipe['directions'],
+    // directions: Recipe['directions'],
+    directions: FormArray<FormControl<string>>['controls'],
     readonly: boolean,
   }> = inject(RxState);
   effects = inject(RxEffects);
@@ -84,7 +86,11 @@ export class RecipeDirectionsComponent {
   ngOnInit(): void {
     this.parent.addControl('directions', this.fb.array<DirectionCtrl>([]));
     const directionsFormArray = this.parent.get('directions') as FormArray<DirectionCtrl>;
-    this.state.connect('directions', rawValueChanges(directionsFormArray!, true));
+    this.state.connect('directions', rawValueChanges(directionsFormArray, true).pipe(
+      map(() => directionsFormArray.controls.length),
+      distinctUntilChanged(),
+      map(() => directionsFormArray.controls),
+    ));
 
     this.effects.register(this.onDirectionAdd$, () => {
       const newControl = RecipeDirectionsComponent.createDirectionsControl();

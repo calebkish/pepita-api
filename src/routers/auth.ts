@@ -237,6 +237,7 @@ authRouter.get(
             calories: true,
             order: true,
             carbohydrates: true,
+            factor: true,
             id: true,
           },
           orderBy: {
@@ -272,7 +273,7 @@ authRouter.post(
   body('dailyTargetCarbohydrates').custom(isNumber),
   body('dailyTargetFat').custom(isNumber),
   body('autoCreatedMealTemplates[*].name').custom(notEmpty),
-  body('autoCreatedMealTemplates[*].order').custom(isNumber),
+  body('autoCreatedMealTemplates[*].factor').custom(isNumber),
   body('autoCreatedMealTemplates[*].calories').custom(isNumber),
   body('autoCreatedMealTemplates[*].protein').custom(isNumber),
   body('autoCreatedMealTemplates[*].carbohydrates').custom(isNumber),
@@ -290,22 +291,12 @@ authRouter.post(
 
     const autoCreatedMealTemplates: Array<{
       name: string,
-      order: number,
+      factor: number,
       calories: number,
       protein: number,
       carbohydrates: number,
       fat: number,
     }> = req.body.autoCreatedMealTemplates;
-
-    const orders = new Set<number>();
-    for (const { order } of autoCreatedMealTemplates) {
-      if (orders.has(order)) {
-        res.sendStatus(400);
-        next();
-        return;
-      }
-      orders.add(order);
-    }
 
     const account = await prismaClient.account.update({
       where: { id: accountId },
@@ -313,11 +304,16 @@ authRouter.post(
         autoCreatedMealTemplates: {
           deleteMany: {},
           createMany: {
-            // @ts-ignore
-            data: autoCreatedMealTemplates.map(template => {
+            data: autoCreatedMealTemplates.map((mealTemplate, index) => {
               return {
-                ...template,
+                order: index,
                 accountId,
+                factor: mealTemplate.factor,
+                calories: Math.round(mealTemplate.calories),
+                protein: Math.round(mealTemplate.protein),
+                carbohydrates: Math.round(mealTemplate.carbohydrates),
+                fat: Math.round(mealTemplate.fat),
+                name: mealTemplate.name,
               };
             }),
           },
@@ -334,8 +330,8 @@ authRouter.post(
             name: true,
             protein: true,
             calories: true,
-            order: true,
             carbohydrates: true,
+            factor: true,
           },
           orderBy: {
             order: 'asc',
@@ -354,6 +350,8 @@ authRouter.post(
       next();
       return;
     }
+
+    console.log('res', account.autoCreatedMealTemplates);
 
     res.status(200).send({
       autoCreatedMealTemplates: account.autoCreatedMealTemplates,

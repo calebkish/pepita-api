@@ -1,7 +1,10 @@
 import { NutrientViewModel } from "../models/nutrient-view-model";
 import { coreNutrients } from '../models/core-nutrients';
 
-export function sortNutrients(a: NutrientViewModel, b: NutrientViewModel): number {
+export function sortNutrients(
+  a: Omit<NutrientViewModel, 'nutrientId'>,
+  b: Omit<NutrientViewModel, 'nutrientId'>,
+): number {
   const aIndex = coreNutrients.findIndex((value) => value === a.name);
   const bIndex = coreNutrients.findIndex((value) => value === b.name);
 

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlContainer, FormControl, FormGroupDirective, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RxState } from '@rx-angular/state';
-import { map, combineLatest, startWith } from 'rxjs';
+import { map, combineLatest, startWith, Subject } from 'rxjs';
 import { requiredValidator } from '../util/has-gram-validator';
 import { BeDirective } from 'src/app/_shared/directives/let.directive';
 
@@ -34,7 +34,7 @@ import { BeDirective } from 'src/app/_shared/directives/let.directive';
       [formControl]="ctrl"
       class="bg-white border-2 rounded-md px-3 py-2 h-auto w-full text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500"
       (focus)="state.set({ focused: true })"
-      (blur)="state.set({ focused: false })"
+      (blur)="state.set({ focused: false }); blur$.next()"
       [ngClass]="{
         'border-red-500 focus:outline-red-200 focus:outline-4': vm?.error,
         'bg-slate-300 [cursor:not-allowed]': vm?.disabled
@@ -74,6 +74,8 @@ export class NumberInputComponent {
     disabled: boolean,
   }> = inject(RxState);
 
+  blur$ = new Subject<void>();
+
   @Input() ctrl!: FormControl;
   @Input() formCtrlName?: string;
   @Input() label?: string;
@@ -91,6 +93,7 @@ export class NumberInputComponent {
       : this.ctrl.enable();
   }
 
+  @Output() blur = this.blur$.asObservable();
 
   constructor() {
     this.state.set({ focused: false, required: false });

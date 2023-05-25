@@ -19,38 +19,20 @@ import { Account, AuthService } from './_shared/services/auth.service';
       You are currently on a trial account. Your trial account will expire on <strong>{{ ts | date:'medium' }}</strong>
     </div>
 
-    <nav class="flex flex-col order-last sm:order-first text-slate-300">
-      <div class="justify-between bg-slate-600 items-center p-3 ">
-        <ul class="flex justify-center gap-7 mx-auto max-w-sm w-full">
-          <ng-container *ngIf="vm?.account; else notLoggedIn">
-            <li *ngFor="let route of authorizedRoutes">
-              <a
-                [routerLink]="route.link"
-                class="flex flex-col font-bold items-center"
-                routerLinkActive="text-white"
-                [routerLinkActiveOptions]="{exact:true}"
-              >
-                <span class="material-symbols-filled text-3xl">{{route.icon}}</span>
-                <p class="text-sm">{{route.title}}</p>
-              </a>
-            </li>
-          </ng-container>
-
-          <ng-template #notLoggedIn>
-            <li *ngFor="let route of nonAuthorizedRoutes">
-              <a
-                [routerLink]="route.link"
-                class="flex flex-col font-bold items-center"
-                routerLinkActive="text-white"
-                [routerLinkActiveOptions]="{exact:true}"
-              >
-                <span class="material-symbols-filled text-3xl">{{route.icon}}</span>
-                <p class="text-sm">{{route.title}}</p>
-              </a>
-            </li>
-          </ng-template>
-        </ul>
-      </div>
+    <nav class="order-last sm:order-first text-slate-300 bg-slate-600 sticky bottom-0 p-1 py-2 sm:p-2">
+      <ul class="flex justify-between mx-auto max-w-sm w-min">
+        <li *ngFor="let route of (vm?.account ? authorizedRoutes : nonAuthorizedRoutes)" class="px-2">
+          <a
+            [routerLink]="route.link"
+            class="flex flex-col font-bold items-center"
+            routerLinkActive="text-white"
+            [routerLinkActiveOptions]="{exact:true}"
+          >
+            <span class="material-symbols-filled text-xl sm:text-3xl">{{route.icon}}</span>
+            <p class="text-sm">{{route.title}}</p>
+          </a>
+        </li>
+      </ul>
     </nav>
 
     <div class="w-full flex-1 mx-auto overflow-y-auto" cdkScrollable>
@@ -74,11 +56,11 @@ export class AppComponent {
       icon: 'today',
       link: '',
     },
-    {
-      title: 'Foods',
-      icon: 'egg_alt',
-      link: 'foods',
-    },
+    // {
+    //   title: 'Foods',
+    //   icon: 'egg_alt',
+    //   link: 'foods',
+    // },
     {
       title: 'Recipes',
       icon: 'ramen_dining',

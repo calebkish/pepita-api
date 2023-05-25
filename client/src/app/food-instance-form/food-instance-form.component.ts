@@ -27,63 +27,60 @@ import { ActiveDayService } from '../_shared/services/active-day.service';
 import { DayService } from '../_shared/services/day.service';
 import { mockFractionalValue } from '../dynamic-form/components/fractional-input.component';
 import { resolveFractional } from '../food-on-recipe/util/resolve-fractional';
+import { CoreNutrientsComponent } from "../nutrients/core-nutrients.component";
 
 type FoodFormMode = 'create' | 'edit';
 
 @Component({
-  selector: 'app-food-instance-form',
-  standalone: true,
-  providers: [RxState, RxEffects],
-  imports: [
-    CommonModule, ReactiveFormsModule, TextInputComponent,
-    SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
-    RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
-    FoodOnRecipeInputComponent, TextAreaInputComponent,
-    FoodOnRecipeFormComponent, RecipeDirectionsComponent,
-    NutrientsComponent,
-  ],
-  template: `
-<div *appBe="state.select() | async as vm" class="p-5">
+    selector: 'app-food-instance-form',
+    standalone: true,
+    providers: [RxState, RxEffects],
+    template: `
+<div *appBe="state.select() | async as vm" class="max-w-lg mx-auto p-5 pt-0">
 
-  <div class="grid grid-cols-12 gap-8">
-    <div class="w-full col-span-7 relative pb-96">
+    <div class="flex flex-col gap-3 sticky top-0 bg-white p-2 z-10 border-slate-100 border-b-2 mb-5">
+      <app-core-nutrients [nutrients]="vm?.foodNutrients ?? []"/>
+    </div>
 
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-5">
-          {{ vm?.formMode === 'create' ? 'Create food instance': 'Edit food instance' }}
-        </h1>
+    <div class="flex justify-between items-center">
+      <h1 class="text-3xl font-bold text-gray-800 mb-5">
+        {{ vm?.formMode === 'create' ? 'Create food instance': 'Edit food instance' }}
+      </h1>
 
-        <button
-          *ngIf="vm?.formMode === 'edit'"
-          (click)="onDeleteFood$.next()"
-          class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
-          type="button"
-        >
-          <span class="material-symbols-outlined">delete</span>
-          Delete food
-        </button>
+      <button
+        *ngIf="vm?.formMode === 'edit'"
+        (click)="onDeleteFood$.next()"
+        class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
+        type="button"
+      >
+        <span class="material-symbols-outlined">delete</span>
+        Delete food
+      </button>
+    </div>
+
+    <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
+      <div class="flex flex-col gap-3">
+        <app-food-on-recipe-inputs [parent]="form.controls.food" [disableCreateDelete]="true" />
       </div>
 
-      <form (ngSubmit)="onSubmit$.next()" [formGroup]="form">
-        <div class="flex flex-col gap-3">
-          <app-food-on-recipe-inputs [parent]="form.controls.food" [disableCreateDelete]="true" />
-        </div>
+      <div class="flex">
+        <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
+      </div>
 
-        <div class="flex">
-          <app-submit-button [label]="vm?.formMode === 'create' ? 'Create' : 'Apply edit'" />
-        </div>
+    </form>
 
-      </form>
-    </div>
-
-    <div class="col-span-5">
-      <app-nutrients *ngIf="vm?.foodNutrients as nutrients" [nutrients]="nutrients" />
-    </div>
-
-  </div>
 </div>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [
+        CommonModule, ReactiveFormsModule, TextInputComponent,
+        SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
+        RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
+        FoodOnRecipeInputComponent, TextAreaInputComponent,
+        FoodOnRecipeFormComponent, RecipeDirectionsComponent,
+        NutrientsComponent,
+        CoreNutrientsComponent
+    ]
 })
 export class FoodInstanceFormComponent {
   fb = inject(NonNullableFormBuilder);

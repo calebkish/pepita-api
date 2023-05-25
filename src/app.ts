@@ -17,7 +17,7 @@ import recipeInstanceRouter from './routers/recipe-instance.js';
 import storeRouter from './routers/store.js';
 import shoppingListRouter from './routers/shopping-list.js';
 
-console.log('db url:', process.env['DATABASE_URL']);
+import 'express-async-errors';
 
 const app = express();
 
@@ -66,15 +66,12 @@ app.use('/recipe-instance', recipeInstanceRouter);
 app.use('/store', storeRouter);
 app.use('/shopping-list', shoppingListRouter);
 
-// Server static assets if in production
-// if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static('client/dist/pepita'));
+// Set static folder
+app.use(express.static('client/dist/pepita'));
 
-  app.get('/*', (req, res) => {
-    res.sendFile(path.resolve('client', 'dist', 'pepita', 'index.html'));
-  });
-// }
+app.get('/*', (req, res) => {
+  res.sendFile(path.resolve('client', 'dist', 'pepita', 'index.html'));
+});
 
 const port = process.env.PORT ?? 8080;
 

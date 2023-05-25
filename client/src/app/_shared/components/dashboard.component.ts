@@ -20,25 +20,31 @@ import { NutrientViewModel } from 'src/app/nutrients/models/nutrient-view-model'
 import { Day } from '../models/day';
 import { foodToNutrientViewModels, recipeToNutrientViewModels } from 'src/app/food-on-recipe/util/get-food-on-recipe-nutrients';
 import { aggregateNutrients } from 'src/app/nutrients/util/aggregate-nutrients';
-import { calorieName, carbohydrateName, coreNutrients, fatName, proteinName } from 'src/app/nutrients/models/core-nutrients';
-import { sortNutrients } from 'src/app/nutrients/util/sort-nutrients';
+import { calorieName, carbohydrateName, CoreNutrient, coreNutrients, fatName, proteinName } from 'src/app/nutrients/models/core-nutrients';
 import { resolveFractional } from 'src/app/food-on-recipe/util/resolve-fractional';
 import { ClipboardService, ItemSelection } from '../services/clipboard.service';
+import { CoreNutrientsComponent } from "../../nutrients/core-nutrients.component";
+import { Platform } from '@angular/cdk/platform';
+import { AuthService } from '../services/auth.service';
 
 @Component({
-  selector: 'app-dashboard',
-  providers: [RxState, RxEffects],
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, DpDatePickerModule, BeDirective, MealComponent, DialogModule],
-  standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './dashboard.component.html',
+    selector: 'app-dashboard',
+    providers: [RxState, RxEffects],
+    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './dashboard.component.html',
+    imports: [CommonModule, RouterModule, ReactiveFormsModule,
+      DpDatePickerModule, BeDirective, MealComponent, DialogModule,
+      CoreNutrientsComponent],
 })
 export class DashboardComponent {
+  platform = inject(Platform);
   dialog = inject(Dialog);
   fb = inject(NonNullableFormBuilder);
   dayService = inject(DayService);
   activeDayService = inject(ActiveDayService);
   clipboardService = inject(ClipboardService);
+  authService = inject(AuthService);
 
   effects = inject(RxEffects);
   state: RxState<{
@@ -47,6 +53,7 @@ export class DashboardComponent {
     nutrients: Omit<NutrientViewModel, 'nutrientId'>[],
     days: any[],
     clipboard: ItemSelection | null,
+    nutrientGoals: Array<{ nutrient: CoreNutrient, goal: number }>,
   }> = inject(RxState);
 
   onDayMutate$ = new Subject<{ offset: number }>();
@@ -112,12 +119,15 @@ export class DashboardComponent {
 
     // =========================================================================
 
+    const isMobile = this.platform.IOS && this.platform.ANDROID;
+
     this.effects.register(this.onAddMealToDay$.pipe(
       withLatestFrom(this.state.select('day')),
       tap(([_, day]) => {
         this.dialog.open(AddMealDialogComponent, {
           minWidth: '300px',
-          data: { day }
+          data: { day },
+          autoFocus: isMobile ? false : true,
         });
       }),
     ));
@@ -156,24 +166,32 @@ export class DashboardComponent {
           .flat();
 
         const agg = aggregateNutrients(dayNutrients)
-          .filter(nutrient => coreNutrients.includes(nutrient.name));
+          .filter(nutrient => coreNutrients.includes(nutrient.name as CoreNutrient));
         nutrients = [...agg];
       }
 
-      if (!nutrients.find(n => n.name === calorieName)) {
-        nutrients.push({ name: calorieName, unit: 'kcal', amount: 0, nutrientId: '' });
-      }
-      if (!nutrients.find(n => n.name === proteinName)) {
-        nutrients.push({ name: proteinName, unit: 'g', amount: 0, nutrientId: '' });
-      }
-      if (!nutrients.find(n => n.name === carbohydrateName)) {
-        nutrients.push({ name: carbohydrateName, unit: 'g', amount: 0, nutrientId: '' });
-      }
-      if (!nutrients.find(n => n.name === fatName)) {
-        nutrients.push({ name: fatName, unit: 'g', amount: 0, nutrientId: '' });
-      }
-      return nutrients.sort(sortNutrients);
+      return nutrients;
     });
+
+    this.state.connect('nutrientGoals', this.authService.settings$.pipe(
+      map((settings) => {
+        const goals = [];
+
+        if (settings.dailyTargetProtein) {
+          goals.push({ nutrient: proteinName, goal: settings.dailyTargetProtein });
+        }
+        if (settings.dailyTargetCalories) {
+          goals.push({ nutrient: calorieName, goal: settings.dailyTargetCalories });
+        }
+        if (settings.dailyTargetCarbohydrates) {
+          goals.push({ nutrient: carbohydrateName, goal: settings.dailyTargetCarbohydrates })
+        }
+        if (settings.dailyTargetFat) {
+          goals.push({ nutrient: fatName, goal: settings.dailyTargetFat });
+        }
+        return goals;
+      }),
+    ))
   }
 }
 

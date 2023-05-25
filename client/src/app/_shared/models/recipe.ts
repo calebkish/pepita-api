@@ -14,6 +14,8 @@ export interface Recipe {
   accountId: string;
   foodsOnRecipes: FoodOnRecipe[];
   scale: number;
+  batchRecipes: Recipe[];
+  batchRecipe?: Recipe;
 }
 
 export interface FoodOnRecipe {

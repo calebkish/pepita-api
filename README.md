@@ -153,7 +153,7 @@ Now w/ Typescript script, we need to:
 
 Then with postgres:
 ```
-psql -h localhost -p 5432 -U postgres cooldb <<EOSQL
+psql -h localhost -p 5433 -U postgres cooldb <<EOSQL
 TRUNCATE TABLE "FoodCategory" CASCADE;
 TRUNCATE TABLE "FoodBrand" CASCADE;
 TRUNCATE TABLE "Food" CASCADE;
@@ -165,6 +165,57 @@ TRUNCATE TABLE "FoodUnit" CASCADE;
 \copy "NutrientsOnFoods" from 'food-nutrient.csv' WITH (FORMAT CSV, HEADER MATCH)
 \copy "FoodUnit" from 'food-unit.csv' WITH (FORMAT CSV, HEADER MATCH)
 EOSQL
+```
+
+## FNDDS
+
+- Download branded food zip file:
+    - Webpage: `https://fdc.nal.usda.gov/download-datasets.html`
+    - CSV download: `https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2022-10-28.zip`
+- Unzip the file.
+
+```
+sqlite3 fndds.db
+
+.mode csv
+.headers on
+
+.import food_portion.csv food_portion
+.import food.csv food
+.import food_nutrient.csv food_nutrient
+.import nutrient.csv nutrient
+.import survey_fndds_food.csv survey_fndds_food
+
+CREATE TABLE "FoodExport" AS
+SELECT f.fdc_id, f.description, s.food_code
+FROM food as f
+JOIN survey_fndds_food as s ON f.fdc_id = s.fdc_id;
+
+CREATE TABLE "NutrientsOnFoodsExport" AS
+SELECT fn.nutrient_id, n.name, n.unit_name, fn.amount, f.food_code, f.fdc_id, n.id
+FROM food_nutrient as fn
+JOIN nutrient as n ON fn.nutrient_id = n.nutrient_nbr
+JOIN survey_fndds_food as f ON fn.fdc_id = f.fdc_id
+WHERE fn.nutrient_id IN (203, 204, 205, 208);
+
+CREATE TABLE "FoodUnitExport" AS
+SELECT fp.fdc_id, s.food_code, fp.portion_description, fp.gram_weight
+FROM food_portion as fp
+JOIN survey_fndds_food as s ON fp.fdc_id = s.fdc_id;
+
+.mode csv
+.headers on
+
+.once exports/FoodExport.csv
+SELECT * FROM "FoodExport";
+
+.once exports/NutrientsOnFoodsExport.csv
+SELECT * FROM "NutrientsOnFoodsExport";
+
+.once exports/FoodUnitExport.csv
+SELECT * FROM "FoodUnitExport";
+
+.q
 ```
 
 
@@ -194,3 +245,139 @@ npm run import-branded
 cd import/data/branded/postgres-copy
 psql -d "postgres://pepita:PASSWORD@localhost:5432/pepita"
 ```
+
+```
+psql -d "postgres://pepita:PASSWORD@localhost:5432/pepita" << EOSQL
+TRUNCATE TABLE "FoodCategory" CASCADE;
+TRUNCATE TABLE "FoodBrand" CASCADE;
+TRUNCATE TABLE "Food" CASCADE;
+TRUNCATE TABLE "NutrientsOnFoods" CASCADE;
+TRUNCATE TABLE "FoodUnit" CASCADE;
+\copy "FoodCategory" from 'food-category.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "FoodBrand" from 'food-brand.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "Food" from 'food.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "NutrientsOnFoods" from 'food-nutrient.csv' WITH (FORMAT CSV, HEADER MATCH)
+\copy "FoodUnit" from 'food-unit.csv' WITH (FORMAT CSV, HEADER MATCH)
+EOSQL
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const currentWeight: number = INPUT();
+
+const weightUnitPreference: 'pounds' | 'kilograms' = INPUT();
+
+const gender: 'male' | 'female' = INPUT();
+
+const measurementUnitPreference: 'inch' | 'centimeter' = INPUT();
+
+const waistMeasurement = INPUT();
+const heightMeasurement = INPUT();
+const neckMeasurement = INPUT();
+const hipMeasurement = INPUT();
+
+const bodyFat = (() => {
+    if (gender === 'male') {
+        if (measurementUnitPreference === 'centimeter') {
+            return 86.01 * log(waistMeasurement - neckMeasurement) - 70.041 * log(heightMeasurement) + 30.3;
+        } else if (measurementUnitPreference === 'inch') {
+            return 86.01 * log((waistMeasurement - neckMeasurement) * 2.54) - 70.041 * log(heightMeasurement * 2.54) + 30.3;
+        }
+    } else if (gender === 'female') {
+        if (measurementUnitPreference === 'centimeter') {
+            return 495 / (1.29579 - 0.35004 * log10(waistMeasurement + hipMeasurement - neckMeasurement) + 0.221 * log10(heightMeasurement)) - 450;
+        } else if (measurementUnitPreference === 'inch') {
+            return 495 / (1.29579 - 0.35004 * log10((waistMeasurement + hipMeasurement - neckMeasurement) * 2.54) + 0.221 * log10(heightMeasurement * 2.54)) - 450;
+        }
+    }
+})();
+
+
+const protein = currentWeight;
+const proteinLowerBound = currentWeight * 0.8;
+const proteinUpperBound = currentWeight * 1.2;
+
+const recommendedFatMultiplier = (() => {
+    if (gender === 'male') {
+        if (bodyFat < 25) {
+             return 0.22;
+        } else {
+            return 0.25;
+        }
+    }
+    if (gender === 'female') {
+        return 0.3;
+    }
+})();
+
+const lowerFatMultiplier = (() => {
+    if (gender === 'male') {
+        return 0.15;
+    } else {
+        return 0.2;
+    }
+})();
+
+const upperFatMultiplier = (() => {
+    if (gender === 'male') {
+        return 0.3;
+    } else {
+        return 0.4;
+    }
+})();
+
+const fat = (recommendedFatMultiplier * neededCaloriesToEat)/9;
+const fatLowerBound = (lowerFatMultiplier * neededCaloriesToEat)/9;
+const fatUpperBound = (upperFatMultiplier * neededCaloriesToEat)/9;
+
+const carbs = (neededCaloriesToEat - (protein * 4) - (fat * 9)) / 4;
+const carbsLowerBound = carbs * 0.8;
+const carbsUpperBound = carbs * 1.2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

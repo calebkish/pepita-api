@@ -11,6 +11,31 @@ import { notEmpty } from '../validators/not-empty.js';
 const recipeRouter = express.Router();
 
 export const foodOnRecipeInclude = {
+  batchRecipes: true,
+  batchRecipe: {
+    include: {
+      batchRecipes: {
+        include: {
+          foodsOnRecipes: {
+            include: {
+              food: {
+                include: {
+                  foodUnits: true,
+                  nutrientsOnFoods: {
+                    include: {
+                      nutrient: true,
+                      unit: true,
+                    }
+                  }
+                },
+              },
+              foodUnit: true,
+            },
+          },
+        },
+      },
+    },
+  },
   foodsOnRecipes: {
     include: {
       food: {
@@ -33,7 +58,7 @@ export const foodOnRecipeInclude = {
 recipeRouter.get(
   '/',
   isAuthorized,
-  async(req, res) => {
+  async (req, res) => {
     const { accountId } = res.locals;
 
     const recipes = await prismaClient.recipe.findMany({
@@ -42,7 +67,6 @@ recipeRouter.get(
         saved: true,
         owningBatchRecipeId: null,
       },
-      include: foodOnRecipeInclude,
     });
 
     return res.status(200).send(recipes);
@@ -54,11 +78,8 @@ recipeRouter.get(
   '/search',
   isAuthorized,
   query('q').trim().notEmpty().isString(),
-  query('batched').optional().isBoolean(),
   isValid,
   async (req, res) => {
-    const shouldFetchBatched = req.query.batched === 'true';
-
     const search = req.query.q!;
     if (typeof search !== 'string') {
       res.sendStatus(400);
@@ -67,48 +88,18 @@ recipeRouter.get(
 
     const { accountId } = res.locals;
 
-    let response: Recipe[] = [];
+    const queried: Array<Pick<Recipe, 'id' | 'name' | 'isBatchRecipe'> & { similarity: number }> = await prismaClient.$queryRaw`
+      SELECT id, name, "isBatchRecipe", similarity("name", ${search}) AS similarity
+      FROM "Recipe"
+      WHERE true
+        AND ("name" % ${search})
+        AND ("accountId" = ${accountId})
+        AND ("saved" = true)
+      ORDER BY similarity DESC
+      LIMIT 20
+    `;
 
-    response = await prismaClient.recipe.findMany({
-      where: {
-        name: {
-          contains: search,
-        },
-        accountId,
-        saved: true,
-      },
-      include: foodOnRecipeInclude,
-      take: 20,
-    });
-
-    // if (shouldFetchBatched) {
-    //   response = await prismaClient.recipe.findMany({
-    //     where: {
-    //       name: {
-    //         contains: search,
-    //       },
-    //       accountId,
-    //       isBatchRecipe: true,
-    //     },
-    //     include: foodOnRecipeInclude,
-    //     take: 10,
-    //   });
-    // } else {
-    //   response = await prismaClient.recipe.findMany({
-    //     where: {
-    //       name: {
-    //         contains: search,
-    //       },
-    //       accountId,
-    //       isBatchRecipe: false,
-    //       saved: true,
-    //     },
-    //     include: foodOnRecipeInclude,
-    //     take: 10,
-    //   });
-    // }
-
-    res.status(200).send(response);
+    res.status(200).send(queried);
     return;
   },
 );
@@ -119,9 +110,7 @@ recipeRouter.get(
   isAuthorized,
   param('id').custom(notEmpty),
   isValid,
-  async(req, res, next) => {
-    const { accountId } = res.locals;
-
+  async(req, res) => {
     const recipe = await prismaClient.recipe.findUnique({
       where: {
         id: req.params.id,
@@ -153,6 +142,8 @@ recipeRouter.put(
     const { name, foods, gramWeight, directions, recipeId } = req.body;
     const { accountId } = res.locals;
 
+    console.log('dirs:', directions);
+
     const foodsOnRecipeItems: FoodOnRecipeFormArrayItem[] = foods;
 
     await prismaClient.$transaction(async (tx) => {
@@ -163,6 +154,7 @@ recipeRouter.put(
           },
           data: {
             name,
+            directions,
             gramWeight,
             foodsOnRecipes: {
               deleteMany: [

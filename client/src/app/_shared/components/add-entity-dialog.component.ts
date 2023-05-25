@@ -16,6 +16,7 @@ import { Recipe } from '../models/recipe';
 import { RecipeService } from '../services/recipe.service';
 import { wrap, Wrapped } from '../util/wrap';
 import { rawValueChanges } from 'src/app/dynamic-form/util/raw-value-changes';
+import { calorieName, proteinName } from 'src/app/nutrients/models/core-nutrients';
 
 export type EntityType = AddEntityDialogResult['type'];
 
@@ -86,9 +87,18 @@ type DialogTab = 'food' | 'recipe' | 'batchRecipe';
           (click)="onResultSelect({ type: 'food', item: food })"
           class="p-3 active:bg-slate-300 w-full text-left text-sm bg-slate-100 rounded-md hover:bg-slate-200"
         >
-          <!-- <p class="whitespace-nowrap [text-overflow:ellipsis] overflow-x-hidden">{{ food.name }}</p> -->
-          <p class="">{{ food.name }}</p>
-          <p class="text-xs">{{food.foodBrand.name}}</p>
+          <div class="flex justify-between gap-3">
+            <div>
+              <p class="">{{ food.name }}</p>
+              <p class="text-xs" *ngIf="food.foodBrand?.name as foodBrandName">{{foodBrandName}}</p>
+              <p class="text-xs">{{getFoodUnitName(food)}}</p>
+            </div>
+
+            <div class="w-max shrink-0">
+              <p class="text-xs" *ngIf="getCalories(food) as calories">{{calories | number:'1.0-0'}} kcal</p>
+              <p class="text-xs" *ngIf="getProtein(food) as protein">Protein: {{protein | number:'1.0-0'}} g</p>
+            </div>
+          </div>
         </button>
       </div>
     </div>
@@ -128,6 +138,7 @@ type DialogTab = 'food' | 'recipe' | 'batchRecipe';
   imports: [CommonModule, TextInputComponent, A11yModule, BeDirective],
 })
 export class AddEntityDialogComponent {
+
   fb = inject(NonNullableFormBuilder);
   dialogRef: DialogRef<AddEntityDialogResult, AddEntityDialogComponent> = inject(DialogRef);
   dialogData: AddEntityDialogData = inject(DIALOG_DATA);
@@ -176,7 +187,7 @@ export class AddEntityDialogComponent {
             this.dialogRef.overlayRef.updatePositionStrategy(posStrat);
             this.dialogRef.updatePosition();
           } else {
-            this.dialogRef.updateSize('50vw', '50vh');
+            this.dialogRef.updateSize('50vw', '80vh');
             const posStrat = new GlobalPositionStrategy()
               .centerHorizontally()
               .centerVertically();
@@ -219,6 +230,35 @@ export class AddEntityDialogComponent {
 
   protected onResultSelect(result: AddEntityDialogResult): void {
     this.dialogRef.close(result);
+  }
+
+  protected getCalories(food: Food) {
+    const brandedFoodUnit = food.foodUnits.find(foodUnit => foodUnit.abbreviation === 'serv');
+    const calories = food.nutrientsOnFoods.find(n => n.nutrient.name === calorieName)?.amount;
+    if (brandedFoodUnit && calories) {
+      return brandedFoodUnit.baseUnitAmountRatio * calories;
+    }
+    return calories;
+  }
+
+  protected getProtein(food: Food) {
+    const brandedFoodUnit = food.foodUnits.find(foodUnit => foodUnit.abbreviation === 'serv');
+    const protein = food.nutrientsOnFoods.find(n => n.nutrient.name === proteinName)?.amount;
+    if (brandedFoodUnit && protein) {
+      return brandedFoodUnit.baseUnitAmountRatio * protein;
+    }
+    return protein;
+  }
+
+  protected getFoodUnitName(food: Food) {
+    const brandedFoodUnit = food.foodUnits.find(foodUnit => foodUnit.abbreviation === 'serv');
+    const pattern = /serving \((?<unitName>.*)\)/;
+    if (brandedFoodUnit?.name) {
+      const match = brandedFoodUnit?.name.match(pattern);
+      const unitName = match?.groups?.['unitName'];
+      return unitName ?? '';
+    }
+    return '';
   }
 
 }

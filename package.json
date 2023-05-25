@@ -8,7 +8,8 @@
     "start:debug": "node --inspect dist/app.js",
     "start:dev": "tsx watch src/app.ts",
     "prisma": "prisma",
-    "import-branded": "tsx import/branded/branded-food-csv.ts"
+    "import-branded": "tsx import/branded/branded-food-csv.ts",
+    "import-fndds": "tsx import/fndds/fndds-csv.ts"
   },
   "dependencies": {
     "@prisma/client": "^4.3.1",
@@ -16,6 +17,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.1",
+    "express-async-errors": "^3.1.1",
     "express-validator": "^6.15.0",
     "jsonwebtoken": "^9.0.0"
   },

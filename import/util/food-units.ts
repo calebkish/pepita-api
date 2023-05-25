@@ -1,4 +1,3 @@
-import { prismaClient } from "../../db.js";
 import { createBaseUnits } from "./create-base-units.js";
 
 interface UnitAssociation {
@@ -13,35 +12,35 @@ const volumeUnitsAssociations: UnitAssociation[] = [
   },
   {
     abbreviation: 'L',
-    factor: 1000,
+    factor: 1000, // relative to 1 mL
   },
   {
     abbreviation: 'tsp',
-    factor: 4.92892,
+    factor: 4.92892, // relative to 1 mL
   },
   {
     abbreviation: 'tbsp',
-    factor: 14.7868,
+    factor: 14.7868, // relative to 1 mL
   },
   {
     abbreviation: 'fl oz',
-    factor: 29.5735,
+    factor: 29.5735, // relative to 1 mL
   },
   {
     abbreviation: 'cup',
-    factor: 236.5882,
+    factor: 236.5882, // relative to 1 mL
   },
   {
     abbreviation: 'qt',
-    factor: 946.353,
+    factor: 946.353, // relative to 1 mL
   },
   {
     abbreviation: 'pt',
-    factor: 473.1765,
+    factor: 473.1765, // relative to 1 mL
   },
   {
     abbreviation: 'gal',
-    factor: 3785.412,
+    factor: 3785.412, // relative to 1 mL
   },
 ];
 

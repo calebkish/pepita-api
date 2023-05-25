@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Input, TemplateRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, inject, Input, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
-import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
+import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-label-checkbox',
@@ -12,7 +12,7 @@ import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModu
       provide: NG_VALUE_ACCESSOR,
       useExisting: LabelCheckboxComponent,
       multi: true,
-    }
+    },
   ],
   template: `
 <input
@@ -23,7 +23,7 @@ import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModu
   [formControl]="formCtrl"
   (focus)="setFocus(true)"
   (blur)="setFocus(false)"
->
+/>
 <label for="{{checkboxId}}">
   <ng-container *ngTemplateOutlet="template; context: (context$ | async)"></ng-container>
 </label>
@@ -75,19 +75,17 @@ input[type="checkbox"]:checked:active + label {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LabelCheckboxComponent implements ControlValueAccessor {
-  checkboxId = crypto.randomUUID();
-
-  formCtrl = new FormControl<boolean>(false, { nonNullable: true });
+  fb = inject(NonNullableFormBuilder);
 
   @Input() template!: TemplateRef<LabelCheckboxContext>;
 
   @ViewChild('checkboxInput', { read: ElementRef }) checkboxInput!: ElementRef<HTMLInputElement>;
 
-  context$ = new BehaviorSubject<LabelCheckboxContext>({ focused: false, checked: false });
+  checkboxId = crypto.randomUUID();
 
-  focus(): void {
-    this.checkboxInput?.nativeElement.focus();
-  }
+  formCtrl = this.fb.control(false);
+
+  context$ = new BehaviorSubject<LabelCheckboxContext>({ focused: false, checked: false });
 
   constructor() {
     this.formCtrl.valueChanges.subscribe(checked => {
@@ -125,6 +123,7 @@ export class LabelCheckboxComponent implements ControlValueAccessor {
   }
 
   setDisabledState(isDisabled: boolean): void {
+    // @TODO Setup disabled state + styling
     // this.state.set({ disabled: isDisabled });
   }
   // ### CVA ###

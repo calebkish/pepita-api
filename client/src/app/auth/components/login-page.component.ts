@@ -21,7 +21,7 @@ import { Wrapped } from 'src/app/_shared/util/wrap';
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [RxState, RxEffects, RxActionFactory],
     template: `
-<div *appBe="state.select() | async as vm" class="flex h-full items-center justify-center bg-slate-100">
+<div *appBe="state.select() | async as vm" class="flex h-full items-center justify-center bg-slate-100 p-5">
   <div class="rounded-lg p-5 shadow-2xl w-full max-w-md bg-white flex flex-col gap-5">
     <p class="text-2xl font-bold">Login</p>
     <form (ngSubmit)="onSubmit.next()" [formGroup]="form">

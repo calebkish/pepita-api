@@ -33,12 +33,12 @@ export type FoodOnRecipeCtrl = ReturnType<typeof FoodOnRecipeInputComponent.crea
   template: `
 <ng-container [formGroup]="parent" *appBe="state.select() | async as vm">
   <div
-    class="gap-3 items-center w-full flex justify-between"
+    class="gap-3 w-full flex flex-col sm:justify-between sm:flex-row sm:items-center"
     cdkOverlayOrigin
     #trigger="cdkOverlayOrigin"
   >
     <p
-      class="text-sm [max-width:15rem]"
+      class="sm:text-sm sm:[max-width:15rem] font-bold text-lg sm:font-normal"
       (mouseenter)="state.set({ shouldOpenOverlay: true })"
       (mouseleave)="state.set({ shouldOpenOverlay: false })"
     >
@@ -50,19 +50,20 @@ export type FoodOnRecipeCtrl = ReturnType<typeof FoodOnRecipeInputComponent.crea
         *ngIf="showScaledToRecipe"
         formControlName="scaledToRecipe"
         label="Scaled"
-        class="[max-width:10rem]"
+        class="sm:[max-width:10rem] grow"
         [disableScaleChanging]="disableScaleChanging"
       />
 
       <app-fractional-input
+        *ngIf="!disableScaleChanging"
         formControlName="scale"
         label="Amount"
-        class="[max-width:10rem]"
+        class="sm:[max-width:10rem] grow"
         [disableScaleChanging]="disableScaleChanging"
       />
 
       <app-select-input
-        class="[max-width:10rem]"
+        class="[width:5rem] shrink-0"
         label="Unit"
         formCtrlName="foodUnit"
         [options]="vm?.foodUnitOptions ?? []"
@@ -115,6 +116,7 @@ export class FoodOnRecipeInputComponent implements OnInit {
         {
           nonNullable: true,
           validators: [requiredValidator],
+          updateOn: 'change'
         },
       ),
       foodUnit: new FormControl<FoodOnRecipeFormArrayItem['foodUnit']>(
@@ -129,14 +131,14 @@ export class FoodOnRecipeInputComponent implements OnInit {
         input?.scale ?? mockFractionalValue,
         {
           nonNullable: true,
-          // updateOn: 'blur',
+          updateOn: 'change',
         },
       ),
       scaledToRecipe: new FormControl<FoodOnRecipeFormArrayItem['scaledToRecipe']>(
         input?.scaledToRecipe ?? mockFractionalValue,
         {
           nonNullable: true,
-          // updateOn: 'blur',
+          updateOn: 'change',
         },
       ),
     }) satisfies FormGroup<Record<keyof FoodOnRecipeFormArrayItem, any>>;
@@ -167,6 +169,7 @@ export class FoodOnRecipeInputComponent implements OnInit {
   positionPairs: ConnectionPositionPair[] = [{ offsetX: 0, offsetY: 0, originX: 'end', originY: 'center', overlayX: 'start', overlayY: 'center' }];
 
   ngOnInit(): void {
+    this.parent.get('scaledToRecipe')?.disable();
     if (this.disableBaseInputs) {
       this.parent.get('scale')?.disable();
       this.parent.get('foodUnit')?.disable();

@@ -58,6 +58,7 @@ recipeInstanceRouter.put(
           },
           data: {
             name,
+            directions,
             gramWeight,
             scale: recipeScale,
             foodsOnRecipes: {

@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormControl, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { RxState, selectSlice } from '@rx-angular/state';
+import { RxState } from '@rx-angular/state';
 import { RxEffects } from '@rx-angular/state/effects';
-import { Subject, tap, of, switchMap, EMPTY, withLatestFrom, catchError, filter, merge, map, debounceTime } from 'rxjs';
+import { Subject, tap, of, switchMap, EMPTY, withLatestFrom, catchError, filter, merge, map, debounceTime, distinctUntilChanged, skip, skipUntil } from 'rxjs';
 import { requiredValidator } from 'src/app/dynamic-form/util/has-gram-validator';
 import { isPositiveNumberValidator } from 'src/app/dynamic-form/util/is-number-validator';
 import { Recipe } from 'src/app/_shared/models/recipe';
@@ -28,27 +28,28 @@ import { NutrientsComponent } from '../nutrients/nutrients.component';
 import { aggregateNutrients } from '../nutrients/util/aggregate-nutrients';
 import { DayService } from '../_shared/services/day.service';
 import { ActiveDayService } from '../_shared/services/active-day.service';
-import { resolveFractional } from '../food-on-recipe/util/resolve-fractional';
 import { scaleFractional } from '../fractional/util/scale-fractional';
 import { foodOnRecipeDtoToVm } from '../food-on-recipe/util/food-on-recipe-dto-to-vm';
 import { foodOnRecipeVmToPutDto } from '../food-on-recipe/util/food-on-recipe-vm-to-dto';
-import { rawValueChanges } from '../dynamic-form/util/raw-value-changes';
+import { CoreNutrientsComponent } from "../nutrients/core-nutrients.component";
+import { RangeInputComponent } from "../dynamic-form/components/range-input.component";
 
 type RecipeInstanceFormMode = 'create' | 'edit';
 
 @Component({
   selector: 'app-recipe-instance-form',
   standalone: true,
+  templateUrl: './recipe-instance-form.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [RxEffects, RxState],
   imports: [
     CommonModule, ReactiveFormsModule, TextInputComponent,
     SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
     RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
     FoodOnRecipeInputComponent, TextAreaInputComponent,
-    RecipeDirectionsComponent, FoodOnRecipeFormComponent, NutrientsComponent
-  ],
-  templateUrl: './recipe-instance-form.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [RxEffects, RxState],
+    RecipeDirectionsComponent, FoodOnRecipeFormComponent, NutrientsComponent,
+    CoreNutrientsComponent, RangeInputComponent,
+  ]
 })
 export class RecipeInstanceFormComponent {
   fb = inject(NonNullableFormBuilder);
@@ -74,11 +75,13 @@ export class RecipeInstanceFormComponent {
 
   form = this.fb.group<{
     name: FormControl<Recipe['name']>,
+    recipeScale: FormControl<Recipe['scale']>,
     gramWeight: FormControl<Recipe['gramWeight'] | null>,
     foods?: FormArray<FoodOnRecipeCtrl>,
     directions?: FormArray<DirectionCtrl>,
   }>({
     name: this.fb.control<Recipe['name']>('', [requiredValidator]),
+    recipeScale: this.fb.control<Recipe['scale']>(1, { updateOn: 'change', validators: [isPositiveNumberValidator] }),
     gramWeight: this.fb.control<Recipe['gramWeight'] | null>(null, [isPositiveNumberValidator]),
   }, { updateOn: 'blur' });
 
@@ -87,14 +90,16 @@ export class RecipeInstanceFormComponent {
       return urlSegments[1].path === 'create' ? 'create' : 'edit';
     });
 
+    this.state.connect('recipeScale', this.form.controls.recipeScale.valueChanges);
+
     this.state.connect('putRecipeResponse', this.onSubmit$.pipe(
       withLatestFrom(
-        this.state.select(selectSlice(['formMode', 'recipeScale'])),
+        this.state.select('formMode'),
         this.activatedRoute.params,
         this.activatedRoute.queryParams,
         this.activeDayService.day$,
       ),
-      switchMap(([_, { formMode, recipeScale }, params, queryParams, activeDay]) => {
+      switchMap(([_, formMode, params, queryParams, activeDay]) => {
         const val = this.form.getRawValue();
         if (!this.form.valid) {
           return of({ loading: false, error: 'Form is invalid' });
@@ -107,7 +112,7 @@ export class RecipeInstanceFormComponent {
           foods: val.foods?.map(foodOnRecipe => foodOnRecipeVmToPutDto(foodOnRecipe)) ?? [],
           recipeInstanceId: params['recipeInstanceId'],
           mealId: queryParams['mealId'],
-          recipeScale,
+          recipeScale: val.recipeScale,
         };
 
         return this.recipeService.putRecipeInstance$(req).pipe(
@@ -118,22 +123,23 @@ export class RecipeInstanceFormComponent {
             }
             if (res.error) {
               if (formMode === 'create') {
-                this.toastService.open({ message: "Failed to create recipe instance" });
+                this.toastService.open({ message: 'Failed to create recipe instance' });
                 return;
               } else if (formMode === 'edit') {
-                this.toastService.open({ message: "Failed to edit recipe instance" });
+                this.toastService.open({ message: 'Failed to edit recipe instance' });
                 return;
               }
             }
             if (res.data) {
               if (formMode === 'create') {
-                this.toastService.open({ message: `New recipe instance "${res.data?.name}" created` });
-                this.router.navigate(['']);
+                // this.toastService.open({ message: `New recipe instance "${res.data?.name}" created` });
                 this.daysService.invalidate(activeDay);
+                this.router.navigate(['']);
                 return;
               } else if (formMode === 'edit') {
-                this.toastService.open({ message: `Recipe instance "${res.data?.name}" changes saved` });
+                // this.toastService.open({ message: `Recipe instance "${res.data?.name}" changes saved` });
                 this.daysService.invalidate(activeDay);
+                this.router.navigate(['']);
                 return;
               }
             }
@@ -149,7 +155,7 @@ export class RecipeInstanceFormComponent {
           wrap(),
           tap(res => {
             if (res.data) {
-              this.toastService.open({ message: 'Recipe instance successfully deleted' });
+              // this.toastService.open({ message: 'Recipe instance successfully deleted' });
               this.daysService.invalidate(activeDay);
               this.router.navigate(['']);
             } else if (res.error) {
@@ -165,35 +171,14 @@ export class RecipeInstanceFormComponent {
     const directionsFormArray = this.form.get('directions') as FormArray<DirectionCtrl> | undefined;
     const foodsFormArray = this.form.get('foods') as FormArray<FoodOnRecipeCtrl> | undefined;
 
-    // Handle foods.scaledToRecipe changes
-    this.state.connect('recipeScale', foodsFormArray!.valueChanges.pipe(
-      debounceTime(10),
-      switchMap(() => {
-        const recipeScale$ = foodsFormArray!.controls.map((foodOnRecipeCtrl) => {
-          const scaledToRecipeCtrl = foodOnRecipeCtrl.controls.scaledToRecipe;
-          return rawValueChanges(scaledToRecipeCtrl, true).pipe(
-            map((incomingValue) => {
-              const unscaledValue = resolveFractional(foodOnRecipeCtrl.getRawValue().scale);
-              const scaledValue = resolveFractional(incomingValue);
-              const recipeScale = scaledValue / unscaledValue;
-              return recipeScale;
-            }),
-          )
-        });
-        return merge(...recipeScale$).pipe(
-          debounceTime(10),
-        );
-      }),
-    ));
-
     // Based on incoming recipeScale...
       // Set recipeNutrients
       // Set foodsOnRecipe controls
-    this.effects.register(this.state.select('recipeScale').pipe(
+    this.effects.register(this.form.controls.recipeScale.valueChanges.pipe(
       tap(recipeScale => {
         const foodsFormArrayItems = foodsFormArray?.getRawValue();
 
-        const scaledNutrients = getNutrients(foodsFormArrayItems!, recipeScale);
+        const scaledNutrients = getScaledNutrients(foodsFormArrayItems!, recipeScale);
         this.state.set({ recipeNutrients: scaledNutrients });
 
         const foodsOnRecipe: FoodOnRecipeFormArrayItem[] = foodsFormArrayItems!
@@ -205,7 +190,12 @@ export class RecipeInstanceFormComponent {
           });
 
         const patchValue = {
-          foods: foodsOnRecipe,
+          foods: foodsOnRecipe.map(foodOnRecipe => {
+            return {
+              scaledToRecipe: foodOnRecipe.scaledToRecipe,
+            };
+          }),
+          recipeScale: recipeScale,
         };
 
         this.form.patchValue(patchValue, { emitEvent: false });
@@ -270,15 +260,16 @@ export class RecipeInstanceFormComponent {
               gramWeight: formMode === 'create' ? null : recipe.gramWeight,
               directions: recipe.directions,
               foods,
+              recipeScale: recipe.scale,
             });
           }),
-        )
+        ),
     );
 
   }
 }
 
-function getNutrients(foodsFormArrayValue: FoodOnRecipeFormArrayItem[], scale: number = 1): NutrientViewModel[] {
+export function getScaledNutrients(foodsFormArrayValue: FoodOnRecipeFormArrayItem[], scale: number = 1): NutrientViewModel[] {
   const foodsOnRecipeWithUpdatedScaleToRecipe = foodsFormArrayValue
     .map(((foodOnRecipe): FoodOnRecipeFormArrayItem => {
       const scaledToRecipe = scaleFractional(foodOnRecipe.scale, scale);

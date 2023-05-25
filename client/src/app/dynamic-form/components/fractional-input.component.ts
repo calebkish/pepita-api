@@ -5,7 +5,7 @@ import { RxEffects } from '@rx-angular/state/effects';
 import { RxState } from '@rx-angular/state';
 import { BeDirective } from 'src/app/_shared/directives/let.directive';
 import { LabelCheckboxComponent } from './label-checkbox.component';
-import { combineLatest, map, merge, startWith, tap, throwError } from 'rxjs';
+import { combineLatest, debounceTime, map, merge, startWith, tap, throwError } from 'rxjs';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { FractionalStepsOverlayComponent } from "./fractional-steps-overlay.component";
 import { FoodOnRecipe } from 'src/app/_shared/models/recipe';
@@ -73,9 +73,9 @@ export class FractionalInputComponent implements ControlValueAccessor {
   }> = inject(RxState);
 
   form = this.fb.group({
-    fraction: this.fb.control<FractionOption>({ scaleNumerator: 1, scaleDenominator: 1 }),
+    scaleDecimal: this.fb.control<number | null>(1),
     scaleBase: this.fb.control<number | null>(1),
-    scaleDecimal: this.fb.control<number | null>(1, { updateOn: 'blur' }),
+    fraction: this.fb.control<FractionOption>({ scaleNumerator: 1, scaleDenominator: 1 }),
     shouldUseScaleDecimal: false,
     halves: false,
     thirds: false,
@@ -83,7 +83,7 @@ export class FractionalInputComponent implements ControlValueAccessor {
     sixths: false,
     eighths: false,
     sixteenths: false,
-  }, { updateOn: 'change' });
+  });
 
   trackByFractionOption: TrackByFunction<FractionOption> = (_, option) => String(option.scaleNumerator) + String(option.scaleDenominator);
 
@@ -123,12 +123,12 @@ export class FractionalInputComponent implements ControlValueAccessor {
       this.form.controls.sixths.valueChanges,
       this.form.controls.eighths.valueChanges,
       this.form.controls.sixteenths.valueChanges,
-    );
+    ).pipe(debounceTime(1));
 
     this.effects.register(stepChange$.pipe(
       tap(() => {
         const value = this.form.getRawValue();
-        const fractionOptions = getFractionSteps(value);
+        const fractionOptions = getFractionStepDropdownOptions(value);
 
         const currentFractionValue = value.fraction.scaleNumerator / value.fraction.scaleDenominator;
 
@@ -168,7 +168,7 @@ export class FractionalInputComponent implements ControlValueAccessor {
       this.form.controls.scaleBase.valueChanges,
       this.form.controls.fraction.valueChanges,
       this.form.controls.scaleDecimal.valueChanges,
-    );
+    ).pipe(debounceTime(1));
 
     this.effects.register(otherChange$.pipe(
       tap(() => {
@@ -250,7 +250,7 @@ export class FractionalInputComponent implements ControlValueAccessor {
       eighths,
       sixteenths,
     }, { emitEvent: false });
-    const fractionOptions = getFractionSteps(value);
+    const fractionOptions = getFractionStepDropdownOptions(value);
     this.state.set({ fractionOptions });
   }
 
@@ -267,8 +267,6 @@ export class FractionalInputComponent implements ControlValueAccessor {
     this.state.set({ disabled: isDisabled });
   }
   // ### CVA ###
-
-
 }
 
 
@@ -287,7 +285,7 @@ export const mockFractionalValue: FractionalValue = {
 };
 
 
-export function getFractionSteps(steps: {
+export function getFractionStepDropdownOptions(steps: {
   halves: boolean,
   thirds: boolean,
   fourths: boolean,
@@ -333,4 +331,3 @@ export function getFractionSteps(steps: {
     });
   return sorted;
 }
-

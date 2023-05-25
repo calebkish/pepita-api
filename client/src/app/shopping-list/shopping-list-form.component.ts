@@ -22,9 +22,19 @@ type FormMode = 'create' | 'edit';
   template: `
 <div *appBe="state.select() | async as vm" class="flex flex-col gap-8 max-w-xl mx-auto p-5">
 
-  <div class="flex justify-between">
-    <div [formGroup]="form">
-      Start
+  <div class="flex flex-col items-center gap-5">
+    <button
+      *ngIf="vm?.formMode === 'edit'"
+      (click)="onDelete$.next()"
+      class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
+      type="button"
+    >
+      <span class="material-symbols-outlined">delete</span>
+      Delete shopping list
+    </button>
+
+    <div class="flex items-center justify-center gap-2" [formGroup]="form">
+      <p>Start</p>
       <input
         #dateDirective="dpDayPicker"
         class="bg-white border-2 rounded-md w-28 h-full text-center text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500"
@@ -33,7 +43,7 @@ type FormMode = 'create' | 'edit';
         theme="dp-material dp-main"
       />
 
-      End
+      <p>End</p>
       <input
         #dateDirective="dpDayPicker"
         class="bg-white border-2 rounded-md w-28 h-full text-center text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500"
@@ -43,17 +53,6 @@ type FormMode = 'create' | 'edit';
       />
     </div>
 
-    <div class="flex justify-between items-center">
-      <button
-        *ngIf="vm?.formMode === 'edit'"
-        (click)="onDelete$.next()"
-        class="bg-red-200 text-red-700 rounded-full px-4 py-2 text-bold text-sm active:bg-red-300 transition-all active:scale-95 w-fit flex items-center gap-1"
-        type="button"
-      >
-        <span class="material-symbols-outlined">delete</span>
-        Delete shopping list
-      </button>
-    </div>
   </div>
 
   <div class="flex flex-col gap-3">

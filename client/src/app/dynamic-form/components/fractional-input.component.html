@@ -1,14 +1,10 @@
 <div class="relative pb-6 flex flex-col items-start" *appBe="state.select() | async as vm" [formGroup]="form">
-  <label
-    *ngIf="label && showLabel"
-    for="{{ label }}"
-    class="text-sm text-gray-600 mb-1"
-  >
+  <label *ngIf="label && showLabel" for="{{ label }}" class="text-sm text-gray-600 mb-1">
     {{ label }} <span class="text-orange-500" *ngIf="vm?.required">*</span>
   </label>
 
   <div class="w-full flex items-center">
-    <div class="flex w-full" *ngIf="vm?.shouldUseScaleDecimal; else fractional">
+    <div *ngIf="vm?.shouldUseScaleDecimal; else fractional" class="flex w-full">
       <input
         #baseInput
         formControlName="scaleDecimal"
@@ -25,13 +21,8 @@
     </div>
 
     <ng-template #fractional>
-      <div
-        class="flex w-full"
-      >
-        <input
-          #decimalInput
-          type="number"
-          id="{{ label }}"
+      <div class="flex w-full">
+        <input #decimalInput type="number" id="{{ label }}"
           class="bg-white px-3 py-5 h-8 w-full text-gray-900 focus:outline focus:outline-2 focus:outline-gray-500 rounded-l-md border-2"
           formControlName="scaleBase"
           (focus)="state.set({ focused: true })"
@@ -58,9 +49,7 @@
       </div>
     </ng-template>
 
-    <button
-      #btn
-      type="button"
+    <button #btn type="button"
       class="text-slate-800 p-2 [background:#e5e7eb] rounded-r-md [height:44px] active:bg-slate-200 transition-all active:scale-95 flex items-center"
       cdkOverlayOrigin
       #trigger="cdkOverlayOrigin"
@@ -81,7 +70,9 @@
   <p
     *ngIf="vm?.error as error"
     class="text-red-500 absolute -bottom-0 left-0 text-sm text-ellipsis overflow-hidden whitespace-nowrap max-w-full z-10 hover:[box-shadow:10px_0_5px_inherit] hover:max-w-none hover:inherit hover:z-10"
-    [ngClass]="{ '[box-shadow:10px_0_5px_inherit] max-w-none inherit z-10': vm?.focused }"
+    [ngClass]="{
+      '[box-shadow:10px_0_5px_inherit] max-w-none inherit z-10': vm?.focused
+    }"
   >
     {{ error }}
   </p>

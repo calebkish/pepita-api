@@ -99,8 +99,8 @@ export interface Food {
 
   baseUnitAmount: number;
   baseUnit: string;
-  foodBrandId: FoodBrand['id'];
-  foodBrand: FoodBrand;
+  foodBrandId?: FoodBrand['id'];
+  foodBrand?: FoodBrand;
 }
 
 

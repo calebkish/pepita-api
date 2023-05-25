@@ -18,7 +18,7 @@ import { BeDirective } from 'src/app/_shared/directives/let.directive';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-<div *appBe="state.select() | async as vm" class="flex h-full items-center justify-center bg-slate-100">
+<div *appBe="state.select() | async as vm" class="flex h-full items-center justify-center bg-slate-100 p-5">
   <div class="rounded-lg p-5 shadow-2xl w-full max-w-md bg-white flex flex-col gap-5">
     <p class="text-2xl font-bold">Register an account</p>
     <form (ngSubmit)="onSubmit.next()" [formGroup]="form">

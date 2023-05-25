@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormControl, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { RxState, selectSlice } from '@rx-angular/state';
+import { RxState } from '@rx-angular/state';
 import { RxEffects } from '@rx-angular/state/effects';
 import { Subject, tap, of, switchMap, EMPTY, withLatestFrom, catchError, filter, merge, map, debounceTime } from 'rxjs';
 import { requiredValidator } from 'src/app/dynamic-form/util/has-gram-validator';
@@ -23,32 +23,35 @@ import { DirectionCtrl, RecipeDirectionsComponent } from '../recipe-directions/r
 import { PutBatchRecipeInstanceRequest, RecipeService } from '../_shared/services/recipe.service';
 import { FoodOnRecipeFormComponent } from "../food-on-recipe/foods-on-recipe-form.component";
 import { NutrientViewModel } from '../nutrients/models/nutrient-view-model';
-import { getFoodOnRecipeNutrients } from '../food-on-recipe/util/get-food-on-recipe-nutrients';
 import { NutrientsComponent } from '../nutrients/nutrients.component';
-import { aggregateNutrients } from '../nutrients/util/aggregate-nutrients';
 import { DayService } from '../_shared/services/day.service';
 import { ActiveDayService } from '../_shared/services/active-day.service';
 import { foodOnRecipeDtoToVm } from '../food-on-recipe/util/food-on-recipe-dto-to-vm';
-import { resolveFractional } from '../food-on-recipe/util/resolve-fractional';
 import { scaleFractional } from '../fractional/util/scale-fractional';
 import { foodOnRecipeVmToPutDto } from '../food-on-recipe/util/food-on-recipe-vm-to-dto';
-import { rawValueChanges } from '../dynamic-form/util/raw-value-changes';
+import { CoreNutrientsComponent } from "../nutrients/core-nutrients.component";
+import { getScaledNutrients } from '../recipe-instance-form/recipe-instance-form.component';
+import { RangeInputComponent } from '../dynamic-form/components/range-input.component';
+import { recipeToNutrientViewModels } from '../food-on-recipe/util/get-food-on-recipe-nutrients';
+import { aggregateNutrients } from '../nutrients/util/aggregate-nutrients';
+import { calorieName } from '../nutrients/models/core-nutrients';
 
 type BatchRecipeFormMode = 'create' | 'edit';
 
 @Component({
   selector: 'app-batch-recipe-instance-form',
   standalone: true,
+  templateUrl: './batch-recipe-instance-form.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [RxEffects, RxState],
   imports: [
     CommonModule, ReactiveFormsModule, TextInputComponent,
     SelectInputComponent, NumberInputComponent, AutocompleteInputComponent,
     RouterModule, SubmitButtonComponent, BeDirective, OverlayModule,
     FoodOnRecipeInputComponent, TextAreaInputComponent,
     RecipeDirectionsComponent, FoodOnRecipeFormComponent, NutrientsComponent,
-  ],
-  templateUrl: './batch-recipe-instance-form.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [RxEffects, RxState],
+    CoreNutrientsComponent, RangeInputComponent,
+  ]
 })
 export class BatchRecipeInstanceFormComponent {
   fb = inject(NonNullableFormBuilder);
@@ -66,6 +69,7 @@ export class BatchRecipeInstanceFormComponent {
     formMode: BatchRecipeFormMode,
     recipeNutrients: NutrientViewModel[],
     recipeScale: number,
+    instanceGramWeight: number | undefined,
   }> = inject(RxState);
 
   // Actions
@@ -74,11 +78,13 @@ export class BatchRecipeInstanceFormComponent {
 
   form = this.fb.group<{
     name: FormControl<Recipe['name']>,
+    recipeScale: FormControl<Recipe['scale']>,
     gramWeight: FormControl<Recipe['gramWeight'] | null>,
     foods?: FormArray<FoodOnRecipeCtrl>,
     directions?: FormArray<DirectionCtrl>,
   }>({
     name: this.fb.control<Recipe['name']>('', [requiredValidator]),
+    recipeScale: this.fb.control<Recipe['scale']>(1, { updateOn: 'change', validators: [isPositiveNumberValidator] }),
     gramWeight: this.fb.control<Recipe['gramWeight'] | null>(null, [isPositiveNumberValidator]),
   }, { updateOn: 'blur' });
 
@@ -89,12 +95,12 @@ export class BatchRecipeInstanceFormComponent {
 
     this.state.connect('putRecipeResponse', this.onSubmit$.pipe(
       withLatestFrom(
-        this.state.select(selectSlice(['formMode', 'recipeScale'])),
+        this.state.select('formMode'),
         this.activatedRoute.params,
         this.activatedRoute.queryParams,
         this.activeDayService.day$,
       ),
-      switchMap(([_, { formMode, recipeScale }, params, queryParams, activeDay]) => {
+      switchMap(([_, formMode, params, queryParams, activeDay]) => {
         const val = this.form.getRawValue();
         if (!this.form.valid) {
           return of({ loading: false, error: 'Form is invalid' });
@@ -108,7 +114,7 @@ export class BatchRecipeInstanceFormComponent {
           batchRecipeInstanceId: params['batchRecipeInstanceId'],
           owningBatchRecipeId: queryParams['owningBatchRecipeId'],
           mealId: queryParams['mealId'],
-          recipeScale,
+          recipeScale: val.recipeScale,
         };
 
         return this.recipeService.putBatchRecipeInstance$(req).pipe(
@@ -128,13 +134,14 @@ export class BatchRecipeInstanceFormComponent {
             }
             if (res.data) {
               if (formMode === 'create') {
-                this.toastService.open({ message: `New batch recipe instance "${res.data?.name}" created` });
-                this.router.navigate(['']);
+                // this.toastService.open({ message: `New batch recipe instance "${res.data?.name}" created` });
                 this.daysService.invalidate(activeDay);
+                this.router.navigate(['']);
                 return;
               } else if (formMode === 'edit') {
-                this.toastService.open({ message: `Batch recipe instance "${res.data?.name}" changes saved` });
+                // this.toastService.open({ message: `Batch recipe instance "${res.data?.name}" changes saved` });
                 this.daysService.invalidate(activeDay);
+                this.router.navigate(['']);
                 return;
               }
             }
@@ -150,7 +157,7 @@ export class BatchRecipeInstanceFormComponent {
           wrap(),
           tap(res => {
             if (res.data) {
-              this.toastService.open({ message: 'Batch recipe instance successfully deleted' });
+              // this.toastService.open({ message: 'Batch recipe instance successfully deleted' });
               this.daysService.invalidate(activeDay);
               this.router.navigate(['']);
             } else if (res.error) {
@@ -166,36 +173,15 @@ export class BatchRecipeInstanceFormComponent {
     const directionsFormArray = this.form.get('directions') as FormArray<DirectionCtrl> | undefined;
     const foodsFormArray = this.form.get('foods') as FormArray<FoodOnRecipeCtrl> | undefined;
 
-    // Handle foods.scaledToRecipe changes
-    this.state.connect('recipeScale', foodsFormArray!.valueChanges.pipe(
-      debounceTime(10),
-      switchMap(() => {
-        const recipeScale$ = foodsFormArray!.controls.map((foodOnRecipeCtrl) => {
-          const scaledToRecipeCtrl = foodOnRecipeCtrl.controls.scaledToRecipe;
-          return rawValueChanges(scaledToRecipeCtrl, true).pipe(
-            map((incomingValue) => {
-              const unscaledValue = resolveFractional(foodOnRecipeCtrl.getRawValue().scale);
-              const scaledValue = resolveFractional(incomingValue);
-              const recipeScale = scaledValue / unscaledValue;
-              return recipeScale;
-            }),
-          )
-        });
-        return merge(...recipeScale$).pipe(
-          debounceTime(10),
-        );
-      }),
-    ));
-
     // Based on incoming recipeScale...
       // Set recipeNutrients
       // Set nutrient controls
       // Set foodsOnRecipe controls
-    this.effects.register(this.state.select('recipeScale').pipe(
+    this.effects.register(this.form.controls.recipeScale.valueChanges.pipe(
       tap(recipeScale => {
         const foodsFormArrayItems = foodsFormArray?.getRawValue();
 
-        const scaledNutrients = getNutrients(foodsFormArrayItems!, recipeScale);
+        const scaledNutrients = getScaledNutrients(foodsFormArrayItems!, recipeScale);
         this.state.set({ recipeNutrients: scaledNutrients });
 
         const foodsOnRecipe: FoodOnRecipeFormArrayItem[] = foodsFormArrayItems!
@@ -207,7 +193,11 @@ export class BatchRecipeInstanceFormComponent {
           });
 
         const patchValue = {
-          foods: foodsOnRecipe,
+          foods: foodsOnRecipe.map(foodOnRecipe => {
+            return {
+              scaledToRecipe: foodOnRecipe.scaledToRecipe,
+            };
+          }),
         };
 
         this.form.patchValue(patchValue, { emitEvent: false });
@@ -266,12 +256,36 @@ export class BatchRecipeInstanceFormComponent {
                 return foodOnRecipeDtoToVm(foodOnRecipe, recipe.scale)
               });
 
+            if (recipe.batchRecipe && recipe.batchRecipe.gramWeight) {
+              this.form.controls.recipeScale.disable();
+
+              const instancesNutrients = recipe.batchRecipe.batchRecipes
+                .filter(batchRecipeInstance => batchRecipeInstance.id !== recipe.id)
+                .map(batchRecipeInstance => {
+                  const nutrients = recipeToNutrientViewModels(batchRecipeInstance);
+                  return nutrients;
+                })
+                .flat();
+              const agg = aggregateNutrients(instancesNutrients);
+
+              const instanceNutrients = recipeToNutrientViewModels(recipe);
+              const totaled = aggregateNutrients([...agg, ...instanceNutrients]);
+
+              const instanceCalorieAmount = instanceNutrients.find(n => n.name === calorieName)?.amount ?? 0;
+              const instancesCalorieAmount = totaled.find(n => n.name === calorieName)?.amount ?? 1;
+              const ratio = instanceCalorieAmount / instancesCalorieAmount;
+
+              const instanceGramWeight = ratio * recipe.batchRecipe.gramWeight;
+              this.state.set({ instanceGramWeight });
+            }
+
             // ...then fill controls with real data.
             this.form.patchValue({
               name: recipe.name,
               gramWeight: formMode === 'create' ? null : recipe.gramWeight,
               directions: recipe.directions,
               foods,
+              recipeScale: recipe.scale,
             });
           }),
       )
@@ -281,22 +295,3 @@ export class BatchRecipeInstanceFormComponent {
 
 }
 
-function getNutrients(foodsFormArrayValue: FoodOnRecipeFormArrayItem[], scale: number = 1): NutrientViewModel[] {
-  const foodsOnRecipeWithUpdatedScaleToRecipe = foodsFormArrayValue
-    .map(((foodOnRecipe): FoodOnRecipeFormArrayItem => {
-      const scaledToRecipe = scaleFractional(foodOnRecipe.scale, scale);
-      return {
-        food: foodOnRecipe.food,
-        foodUnit: foodOnRecipe.foodUnit,
-        scale: foodOnRecipe.scale,
-        scaledToRecipe,
-      }
-    }));
-
-  const unscaledRecipeNutrients = foodsOnRecipeWithUpdatedScaleToRecipe!
-    .map(foodOnRecipe => getFoodOnRecipeNutrients(foodOnRecipe, true))
-    .flat();
-
-  const unscaledRecipeNutrientsAgg = aggregateNutrients(unscaledRecipeNutrients);
-  return unscaledRecipeNutrientsAgg;
-}
